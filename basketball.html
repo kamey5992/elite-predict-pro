@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pronostics Basketball — NBA · EuroLeague · Elite Predict Pro</title>
+  <meta name="description" content="Scores NBA en direct, cotes dynamiques, analyses IA et signaux VIP basketball. Chrono live, quart-par-quart et pronostics en temps réel." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+  <style>
+    :root { --sport-color: #F97316; --sport-glow: rgba(249,115,22,0.18); }
+
+    .page-hero { padding: 140px 0 56px; position: relative; overflow: hidden; }
+    .page-hero .hero-mesh { position: absolute; inset: -10% -10% 0 -10%; z-index: 0; pointer-events: none; }
+    .page-hero .wrap { position: relative; z-index: 2; }
+    .page-hero h1 { font-family: var(--font-head); font-weight: 800; font-size: clamp(32px,4.5vw,58px); letter-spacing: -0.03em; line-height:1.06; margin: 14px 0 12px; }
+    .page-hero p { font-size:17px; color:var(--text-2); max-width:560px; }
+
+    .live-pill { display:inline-flex; align-items:center; gap:8px; background:rgba(249,115,22,0.12); border:1px solid rgba(249,115,22,0.3); color:#fb923c; border-radius:99px; padding:6px 14px; font-family:var(--font-label); font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-bottom:20px; }
+    .live-pill::before { content:""; width:8px; height:8px; border-radius:50%; background:#f97316; box-shadow:0 0 8px #f97316; animation:pulse 1.2s infinite; }
+
+    .tabs-bar { display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--border); margin-bottom:32px; overflow-x:auto; }
+    .tab-btn { padding:12px 20px; border-radius:10px 10px 0 0; font-family:var(--font-label); font-size:13px; font-weight:600; color:var(--text-3); border:1px solid transparent; border-bottom:none; transition:all .2s; white-space:nowrap; position:relative; bottom:-1px; }
+    .tab-btn.active { color:var(--text-1); background:var(--bg-2); border-color:var(--border); border-bottom-color:var(--bg-2); }
+    .tab-btn .count { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:6px; background:rgba(249,115,22,0.15); color:#fb923c; font-size:10px; font-weight:700; margin-left:6px; }
+
+    .comp-filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:32px; }
+    .comp-pill { padding:7px 16px; border-radius:99px; font-family:var(--font-label); font-size:12.5px; font-weight:600; border:1px solid var(--border-strong); color:var(--text-2); transition:all .2s; cursor:pointer; white-space:nowrap; }
+    .comp-pill.active { background:linear-gradient(135deg,#F97316,#fb923c); color:#fff; border-color:transparent; box-shadow:0 4px 14px rgba(249,115,22,0.35); }
+
+    .refresh-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+    .refresh-info { font-size:13px; color:var(--text-3); display:flex; align-items:center; gap:8px; }
+    .refresh-info svg { width:14px; height:14px; }
+    .refresh-btn { display:inline-flex; align-items:center; gap:7px; font-family:var(--font-label); font-size:12px; font-weight:600; color:var(--text-2); border:1px solid var(--border); border-radius:8px; padding:7px 14px; transition:all .2s; }
+    .refresh-btn svg { width:14px; height:14px; transition:transform .6s; }
+    .refresh-btn.spinning svg { animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    .matches-grid { display:flex; flex-direction:column; gap:14px; }
+
+    /* Match card basket */
+    .match-card { background:var(--glass); border:1px solid var(--border-strong); border-radius:var(--radius); padding:20px 24px; transition:transform .3s var(--ease-spring),border-color .3s,box-shadow .3s; position:relative; overflow:hidden; }
+    .match-card:hover { transform:translateY(-3px); border-color:rgba(255,255,255,0.14); box-shadow:0 16px 40px rgba(0,0,0,0.3); }
+    .match-card.live-card { border-color:rgba(249,115,22,0.35); box-shadow:0 0 30px var(--sport-glow); }
+    .match-card.live-card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:#f97316; box-shadow:0 0 10px #f97316; }
+
+    .match-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; gap:10px; }
+    .match-comp { font-family:var(--font-label); font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); display:flex; align-items:center; gap:7px; }
+    .match-time { font-family:var(--font-label); font-size:12px; font-weight:600; color:var(--text-3); }
+    .match-time.live { color:#fb923c; }
+    .match-time.finished { color:var(--text-3); }
+
+    /* Score basket (vertical par équipe) */
+    .basket-body { display:flex; flex-direction:column; gap:10px; }
+    .basket-team { display:flex; align-items:center; gap:12px; justify-content:space-between; padding:10px 14px; border-radius:12px; background:rgba(255,255,255,0.025); border:1px solid var(--border); }
+    .basket-team.winner { border-color:rgba(249,115,22,0.3); background:rgba(249,115,22,0.05); }
+    .bt-left { display:flex; align-items:center; gap:12px; flex:1; min-width:0; }
+    .team-logo { width:40px; height:40px; border-radius:9px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.05); border:1px solid var(--border); flex-shrink:0; overflow:hidden; }
+    .team-logo img { width:32px; height:32px; object-fit:contain; }
+    .bt-name { font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .bt-record { font-size:11.5px; color:var(--text-3); }
+    .bt-score { font-family:var(--font-head); font-weight:800; font-size:32px; letter-spacing:-0.03em; line-height:1; min-width:44px; text-align:right; }
+    .bt-score.leading { color:#fb923c; }
+
+    /* Tableau quarts */
+    .quarters-table { width:100%; border-collapse:collapse; font-size:12px; margin:14px 0; }
+    .quarters-table th { font-family:var(--font-label); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); padding:5px 8px; text-align:center; border-bottom:1px solid var(--border); }
+    .quarters-table th:first-child { text-align:left; }
+    .quarters-table td { padding:6px 8px; text-align:center; color:var(--text-2); }
+    .quarters-table td:first-child { text-align:left; font-weight:600; color:var(--text-1); display:flex; align-items:center; gap:8px; }
+    .quarters-table td.total { font-family:var(--font-head); font-weight:800; font-size:15px; color:var(--text-1); }
+    .quarters-table td.current-q { color:#fb923c; font-weight:700; }
+
+    /* Chrono live */
+    .game-clock { display:inline-flex; align-items:center; gap:6px; background:rgba(249,115,22,0.12); border:1px solid rgba(249,115,22,0.3); border-radius:8px; padding:4px 12px; font-family:var(--font-head); font-weight:800; font-size:14px; color:#fb923c; }
+
+    /* Date badge */
+    .match-date-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(100,116,139,0.10); border:1px solid var(--border); border-radius:8px; padding:4px 10px; font-family:var(--font-label); font-size:11px; font-weight:600; color:var(--text-3); letter-spacing:.05em; margin-bottom:14px; }
+    .match-date-badge svg { width:12px; height:12px; }
+
+    /* Cotes basket (2-way + O/U) */
+    .odds-basket { display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--border); padding-top:16px; margin-top:4px; }
+    .odds-row-2 { display:flex; gap:6px; }
+    .odd-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; background:rgba(255,255,255,0.04); border:1px solid var(--border-strong); border-radius:10px; padding:9px 6px; cursor:pointer; transition:all .2s; }
+    .odd-btn:hover { background:rgba(249,115,22,0.10); border-color:rgba(249,115,22,0.35); }
+    .odd-btn.fav { background:rgba(249,115,22,0.08); border-color:rgba(249,115,22,0.3); }
+    .odd-btn .od-label { font-family:var(--font-label); font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); text-align:center; }
+    .odd-btn .od-val { font-family:var(--font-head); font-weight:800; font-size:17px; color:var(--text-1); }
+    .odd-btn.fav .od-val { color:#fb923c; }
+    .odds-ou { display:flex; gap:6px; }
+    .ou-label { font-family:var(--font-label); font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); margin-bottom:4px; }
+
+    /* Confiance + analyse */
+    .conf-row { display:flex; align-items:center; gap:10px; margin:10px 0; }
+    .conf-label { font-family:var(--font-label); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); white-space:nowrap; }
+    .conf-bar { flex:1; height:5px; border-radius:99px; background:rgba(255,255,255,0.07); overflow:hidden; }
+    .conf-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#F97316,#fb923c); }
+    .conf-pct { font-family:var(--font-head); font-weight:700; font-size:13px; color:#fb923c; white-space:nowrap; }
+    .match-analysis { font-size:13px; color:var(--text-2); line-height:1.55; }
+    .analysis-head { display:flex; align-items:center; gap:7px; margin-bottom:6px; font-family:var(--font-label); font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); }
+    .analysis-text { margin-bottom:8px; }
+    .analysis-lock { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--gold); font-weight:600; }
+
+    /* Skeletons */
+    .match-skeleton { background:var(--glass); border:1px solid var(--border); border-radius:var(--radius); padding:20px 24px; }
+    .sk-line { background:rgba(255,255,255,0.05); border-radius:6px; margin-bottom:10px; position:relative; overflow:hidden; }
+    .sk-line::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent); animation:shimmer 1.4s infinite; }
+    @keyframes shimmer { 100%{transform:translateX(100%)} }
+    .sk-h1{height:14px;width:40%} .sk-h2{height:60px;width:100%;margin:16px 0} .sk-h3{height:12px;width:60%}
+
+    /* État vide */
+    .state-empty { text-align:center; padding:60px 20px; color:var(--text-3); }
+    .state-empty .e-ico { font-size:48px; margin-bottom:16px; }
+    .state-empty h3 { font-family:var(--font-head); font-size:20px; color:var(--text-2); margin-bottom:8px; }
+    .state-empty p { font-size:14.5px; max-width:380px; margin:0 auto; }
+
+    /* Layout */
+    .sport-layout { display:grid; grid-template-columns:1fr 300px; gap:28px; align-items:start; }
+    .sidebar { position:sticky; top:94px; }
+    .sidebar-card { background:var(--glass); border:1px solid var(--border-strong); border-radius:var(--radius); padding:20px; margin-bottom:18px; }
+    .sidebar-card h4 { font-family:var(--font-head); font-weight:700; font-size:15px; margin-bottom:16px; display:flex; align-items:center; gap:9px; }
+    .stat-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); }
+    .stat-row:last-child { border-bottom:none; }
+    .stat-row .sr-l { font-size:13.5px; color:var(--text-2); }
+    .stat-row .sr-r { font-family:var(--font-head); font-weight:700; font-size:16px; }
+    .stat-row .sr-r.orange { color:#fb923c; }
+    .stat-row .sr-r.green { color:#34d399; }
+
+    @media(max-width:1024px){ .sport-layout{grid-template-columns:1fr} .sidebar{position:static} }
+    @media(max-width:640px){ .bt-score{font-size:24px} .basket-team{padding:8px 10px} }
+  </style>
+</head>
+<body>
+  <div id="scroll-progress"></div>
+
+  <header class="nav" id="nav">
+    <div class="wrap nav-inner">
+      <a href="index.html" class="logo">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
+        <span>Elite Predict <b>Pro</b></span>
+      </a>
+      <nav class="nav-links">
+        <div class="has-menu">
+          <button style="color:var(--text-1)">Pronostics <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <div class="dropdown">
+            <a href="football.html"><span class="ico">⚽</span> Football</a>
+            <a href="basketball.html"><span class="ico">🏀</span> Basketball</a>
+            <a href="tennis.html"><span class="ico">🎾</span> Tennis</a>
+            <a href="#" data-toast="🥊 Section MMA bientôt disponible"><span class="ico">🥊</span> MMA</a>
+            <a href="#" data-toast="🎮 Section Esports bientôt disponible"><span class="ico">🎮</span> Esports</a>
+          </div>
+        </div>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="blog.html">Blog</a>
+        <a href="tarifs.html">Tarifs</a>
+      </nav>
+      <div class="nav-right">
+        <button class="nav-icon-btn" data-open-search aria-label="Rechercher"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
+        <a href="#" class="nav-link-login" data-toast="Connexion — formulaire à venir">Connexion</a>
+        <a href="tarifs.html" class="btn btn-gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Essai Gratuit</a>
+        <button class="nav-icon-btn burger" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="search-overlay" id="search-overlay">
+    <div class="search-box">
+      <div class="search-field">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="search-input" placeholder="Rechercher une équipe, un match…" /><kbd>ESC</kbd>
+      </div>
+      <div class="search-results">
+        <div class="group-label">Accès rapide</div>
+        <a href="basketball.html"><span class="ico">🏀</span> Pronostics Basketball</a>
+        <a href="tarifs.html"><span class="ico">👑</span> Offres &amp; Tarifs VIP</a>
+      </div>
+    </div>
+  </div>
+
+  <section class="page-hero">
+    <div class="hero-mesh">
+      <span class="mesh-blob g1" style="background:radial-gradient(circle,rgba(249,115,22,0.25),transparent 70%)"></span>
+      <span class="mesh-blob g2"></span>
+    </div>
+    <div class="wrap">
+      <div class="live-pill reveal">Données en temps réel</div>
+      <span class="eyebrow reveal" data-delay="40" style="color:#fb923c">Basketball</span>
+      <h1 class="reveal" data-delay="80">Pronostics Basketball<br><span style="background:linear-gradient(135deg,#F97316,#fb923c);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">NBA · EuroLeague · Live</span></h1>
+      <p class="reveal" data-delay="140">Scores live quart-par-quart, chrono en temps réel, cotes dynamiques et analyses IA pour chaque match.</p>
+    </div>
+  </section>
+
+  <section class="pad" style="padding-top:40px">
+    <div class="wrap">
+      <div class="comp-filters reveal">
+        <button class="comp-pill active" data-league="nba">🏀 NBA</button>
+        <button class="comp-pill" data-league="euroleague">🏆 EuroLeague</button>
+        <button class="comp-pill" data-league="wnba">♀ WNBA</button>
+      </div>
+
+      <div class="sport-layout">
+        <div>
+          <div class="tabs-bar reveal">
+            <button class="tab-btn active" data-tab="live">En direct <span class="count" id="live-count">…</span></button>
+            <button class="tab-btn" data-tab="upcoming">À venir</button>
+            <button class="tab-btn" data-tab="finished">Terminés</button>
+          </div>
+          <div class="refresh-bar reveal">
+            <div class="refresh-info">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span id="last-update">Chargement…</span>
+            </div>
+            <button class="refresh-btn" id="refresh-btn" onclick="fetchGames(true)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+              Actualiser
+            </button>
+          </div>
+          <div class="matches-grid" id="games-container"></div>
+        </div>
+
+        <aside class="sidebar">
+          <div class="sidebar-card reveal">
+            <h4><span style="font-size:18px">📊</span> Aujourd'hui</h4>
+            <div class="stat-row"><span class="sr-l">Matchs au programme</span><span class="sr-r orange" id="stat-count">—</span></div>
+            <div class="stat-row"><span class="sr-l">En direct</span><span class="sr-r orange" id="stat-live">—</span></div>
+            <div class="stat-row"><span class="sr-l">Taux de réussite</span><span class="sr-r green">78%</span></div>
+            <div class="stat-row"><span class="sr-l">Cote moyenne</span><span class="sr-r">1.92</span></div>
+          </div>
+          <div class="sidebar-card reveal" data-delay="80">
+            <h4><span style="font-size:18px">🏆</span> Classement NBA Est</h4>
+            <div style="font-size:13px;color:var(--text-2);display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between"><span>🟢 1. Boston Celtics</span><span style="color:#fb923c;font-weight:700">62-20</span></div>
+              <div style="display:flex;justify-content:space-between"><span>2. Cleveland Cavaliers</span><span style="color:var(--text-3)">58-24</span></div>
+              <div style="display:flex;justify-content:space-between"><span>3. NY Knicks</span><span style="color:var(--text-3)">51-31</span></div>
+              <div style="display:flex;justify-content:space-between"><span>4. Milwaukee Bucks</span><span style="color:var(--text-3)">49-33</span></div>
+              <div style="display:flex;justify-content:space-between"><span>5. Indiana Pacers</span><span style="color:var(--text-3)">46-36</span></div>
+            </div>
+          </div>
+          <div class="sidebar-card reveal" data-delay="160" style="background:linear-gradient(135deg,rgba(249,115,22,0.10),rgba(13,17,32,0.95));border-color:rgba(249,115,22,0.3)">
+            <h4 style="color:#fb923c"><span style="font-size:18px">👑</span> Signaux VIP</h4>
+            <p style="font-size:13.5px;color:var(--text-2);margin-bottom:16px">Accédez à nos pronostics IA exclusifs avec gestion de bankroll pour chaque match NBA.</p>
+            <a href="tarifs.html" class="btn btn-block" style="background:linear-gradient(135deg,#F97316,#fb923c);color:#fff;font-size:13px;padding:12px;border-radius:10px;text-align:center;font-family:var(--font-label);font-weight:700">Voir les offres VIP</a>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="f-col"><a href="index.html" class="logo"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span><span>Elite Predict <b>Pro</b></span></a><p class="f-desc">Pronostics premium propulsés par l'IA.</p></div>
+        <div class="f-col"><h4>Navigation</h4><a href="football.html">Football</a><a href="basketball.html">Basketball</a><a href="tennis.html">Tennis</a><a href="tarifs.html">Tarifs</a></div>
+        <div class="f-col"><h4>Légal</h4><a href="#" data-toast="Page à venir">CGU</a><a href="#" data-toast="Page à venir">Jeu responsable</a></div>
+        <div class="f-col"><h4>Suivez-nous</h4><div class="socials"><a href="#" data-toast="X/Twitter" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a><a href="#" data-toast="Instagram" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a></div></div>
+      </div>
+      <div class="footer-bar"><div class="copy">© <span id="year"></span> Elite Predict Pro.</div><div class="links"><a href="#" data-toast="Page à venir">CGU</a><a href="#" data-toast="Page à venir">Confidentialité</a></div></div>
+      <p class="footer-disclaimer">Les paris sportifs comportent des risques. Réservé aux personnes majeures (18+).</p>
+    </div>
+  </footer>
+
+  <button id="back-top" aria-label="Retour en haut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>
+  <div id="toasts"></div>
+  <script src="assets/app.js"></script>
+  <script>
+  (function(){
+    "use strict";
+    var currentLeague = "nba", currentTab = "live";
+    var refreshTimer = null, clockTimer = null;
+    var REFRESH_MS = 60000;
+    var allEvents = [], liveClocks = {};
+
+    /* ── Force ELO NBA / EuroLeague ── */
+    var ELO = {
+      "Boston Celtics":1820,"Oklahoma City Thunder":1800,"Cleveland Cavaliers":1785,
+      "Denver Nuggets":1760,"Golden State Warriors":1740,"Los Angeles Lakers":1720,
+      "Phoenix Suns":1710,"Milwaukee Bucks":1695,"Philadelphia 76ers":1675,
+      "Miami Heat":1660,"New York Knicks":1650,"Dallas Mavericks":1640,
+      "Memphis Grizzlies":1630,"Sacramento Kings":1620,"LA Clippers":1610,
+      "Minnesota Timberwolves":1680,"New Orleans Pelicans":1595,"Atlanta Hawks":1575,
+      "Chicago Bulls":1560,"Indiana Pacers":1550,"Orlando Magic":1545,
+      "Houston Rockets":1565,"Brooklyn Nets":1510,"Toronto Raptors":1505,
+      "Utah Jazz":1490,"Washington Wizards":1460,"Detroit Pistons":1450,
+      "Charlotte Hornets":1440,"Portland Trail Blazers":1430,"San Antonio Spurs":1485,
+      /* EuroLeague */
+      "Real Madrid":1780,"Fenerbahçe":1755,"Olympiacos":1720,"Panathinaikos":1715,
+      "FC Barcelona":1705,"CSKA Moscow":1680,"Anadolu Efes":1660,
+      "Maccabi Tel Aviv":1640,"Bayern Munich":1620,"Monaco":1610,
+      "Virtus Bologna":1600,"Baskonia":1590,"Valencia Basket":1575,
+      "Alba Berlin":1530,"Žalgiris":1510,"Red Star":1545
+    };
+    var DEFAULT_ELO = 1550;
+    /* Points par match moyens par équipe (pour O/U) */
+    var PPG = {
+      "Boston Celtics":120,"Golden State Warriors":118,"Dallas Mavericks":116,
+      "Sacramento Kings":117,"Indiana Pacers":122,"Oklahoma City Thunder":119,
+      "Denver Nuggets":115,"Milwaukee Bucks":114,"Memphis Grizzlies":113,
+      "Real Madrid":85,"Fenerbahçe":82,"Panathinaikos":80
+    };
+    var DEFAULT_PPG = 112;
+
+    function getElo(name){ if(!name) return DEFAULT_ELO; if(ELO[name]) return ELO[name]; var k=Object.keys(ELO); for(var i=0;i<k.length;i++){ if(name.toLowerCase().indexOf(k[i].toLowerCase())!==-1||k[i].toLowerCase().indexOf(name.toLowerCase())!==-1) return ELO[k[i]]; } return DEFAULT_ELO; }
+    function getPPG(name){ return PPG[name]||DEFAULT_PPG; }
+
+    function calcOdds(hName, aName){
+      var hE=getElo(hName),aE=getElo(aName),diff=hE-aE;
+      var hP=1/(1+Math.pow(10,-diff/400));
+      var aP=1-hP;
+      var M=1.06;
+      var hO=Math.round((1/hP/M)*100)/100;
+      var aO=Math.round((1/aP/M)*100)/100;
+      var spread=Math.round(diff/18*2)/2; // arrondi à 0.5
+      var ou=Math.round((getPPG(hName)+getPPG(aName))*10)/10;
+      var conf=Math.min(90,Math.max(55,68+Math.abs(diff)*0.04));
+      return{home:hO,away:aO,spread:spread,ou:ou,conf:Math.round(conf),diff:diff};
+    }
+
+    function generateAnalysis(hName,aName,odds){
+      var diff=Math.abs(odds.diff), fav=odds.diff>0?hName:aName, und=odds.diff>0?aName:hName;
+      if(diff>150) return fav+" présente un niveau supérieur clairement établi cette saison. "+und+" devra défendre avec grande intensité pour rester dans le match. Victoire nette et couverture du spread attendues.";
+      if(diff>70)  return fav+" entre sur ce match avec un avantage d'expérience et de profondeur de banc. "+und+" a les armes pour compétir mais la régularité plaide pour "+fav+". Écart final sous les 8 points.";
+      return "Affiche équilibrée entre "+hName+" et "+aName+" — les cotes très proches le confirment. Match à enjeu fort, attendez-vous à une fin de match serrée. Le total de points dépendra du rythme imposé en Q1.";
+    }
+
+    /* ── Fetch ESPN ── */
+    window.fetchGames = function(manual){
+      var btn=document.getElementById("refresh-btn");
+      if(btn&&manual) btn.classList.add("spinning");
+      fetch("/.netlify/functions/basketball?league="+encodeURIComponent(currentLeague))
+        .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+        .then(function(data){
+          allEvents=data.events||[];
+          initClocks(allEvents);
+          renderTab(currentTab);
+          updateMeta();
+          if(btn) btn.classList.remove("spinning");
+        })
+        .catch(function(err){ showError(err.message); if(btn) btn.classList.remove("spinning"); });
+    };
+
+    function updateMeta(){
+      var live=allEvents.filter(function(e){ return getState(e)==="in"; });
+      var el;
+      el=document.getElementById("last-update"); if(el) el.textContent="Mis à jour à "+fmt(new Date());
+      el=document.getElementById("live-count");  if(el) el.textContent=live.length;
+      el=document.getElementById("stat-live");   if(el) el.textContent=live.length;
+      el=document.getElementById("stat-count");  if(el) el.textContent=allEvents.length;
+    }
+
+    /* ── Chrono live qui défile ── */
+    function initClocks(events){
+      liveClocks={};
+      events.forEach(function(e){
+        var comp=e.competitions&&e.competitions[0];
+        if(!comp) return;
+        var st=comp.status||{};
+        if(getState(e)==="in" && st.displayClock){
+          liveClocks[String(e.id)]={ clock:st.displayClock, period:st.period||1, fetchedAt:Date.now() };
+        }
+      });
+    }
+
+    function startClockTick(){
+      clearInterval(clockTimer);
+      clockTimer=setInterval(function(){
+        Object.keys(liveClocks).forEach(function(id){
+          var c=liveClocks[id];
+          var elapsed=Math.floor((Date.now()-c.fetchedAt)/1000);
+          var parts=c.clock.split(":"), mins=parseInt(parts[0])||0, secs=parseInt(parts[1])||0;
+          var totalSecs=Math.max(0, mins*60+secs-elapsed);
+          var m=Math.floor(totalSecs/60), s=totalSecs%60;
+          var str=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;
+          var el=document.getElementById("clock-"+id);
+          if(el) el.textContent=str+" — Q"+c.period;
+        });
+      },1000);
+    }
+
+    /* ── Utilitaires ── */
+    function fmt(d){ return d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}); }
+    function fmtFull(d){ return d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"}); }
+    function fmtShort(d){ return d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"}); }
+    function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+    function getState(e){ var c=e.competitions&&e.competitions[0]; return c&&c.status&&c.status.type?c.status.type.state:"pre"; }
+    function skeleton(){ return '<div class="match-skeleton"><div class="sk-line sk-h1"></div><div class="sk-line sk-h2"></div><div class="sk-line sk-h3"></div></div>'.repeat(3); }
+
+    function filterByTab(tab){
+      return allEvents.filter(function(e){
+        var s=getState(e);
+        if(tab==="live")     return s==="in";
+        if(tab==="upcoming") return s==="pre";
+        if(tab==="finished") return s==="post";
+        return true;
+      });
+    }
+
+    /* ── Rendu d'un match ── */
+    function renderGame(event){
+      var comp=event.competitions&&event.competitions[0]; if(!comp) return "";
+      var competitors=comp.competitors||[];
+      var home=competitors.find(function(c){ return c.homeAway==="home"; })||competitors[0]||{};
+      var away=competitors.find(function(c){ return c.homeAway==="away"; })||competitors[1]||{};
+      var st=comp.status||{}, stType=st.type||{};
+      var state=stType.state||"pre";
+      var isLive=state==="in", isFinished=state==="post";
+      var mid=String(event.id||"");
+
+      var hTeam=home.team||{}, aTeam=away.team||{};
+      var hScore=parseInt(home.score)||0, aScore=parseInt(away.score)||0;
+      var hName=hTeam.displayName||hTeam.shortDisplayName||"Équipe A";
+      var aName=aTeam.displayName||aTeam.shortDisplayName||"Équipe B";
+      var matchDate=new Date(event.date||Date.now());
+
+      /* Quarts de temps */
+      var hLS=home.linescores||[], aLS=away.linescores||[];
+      var period=st.period||0, clock=st.displayClock||"";
+      var qLabels=["Q1","Q2","Q3","Q4","OT","OT2"];
+
+      function quartersHtml(){
+        if(!isLive&&!isFinished) return "";
+        var cols=Math.max(hLS.length,aLS.length,period);
+        if(!cols) return "";
+        var header="<tr><th>Équipe</th>";
+        var hRow="<tr><td><div class='team-logo' style='width:22px;height:22px;border-radius:5px'>"+(hTeam.logo?'<img src="'+esc(hTeam.logo)+'" style="width:18px;height:18px;object-fit:contain" onerror="this.style.display=\'none\'">':esc((hTeam.abbreviation||hName).slice(0,3).toUpperCase()))+"</div> "+esc(hName)+"</td>";
+        var aRow="<tr><td><div class='team-logo' style='width:22px;height:22px;border-radius:5px'>"+(aTeam.logo?'<img src="'+esc(aTeam.logo)+'" style="width:18px;height:18px;object-fit:contain" onerror="this.style.display=\'none\'">':esc((aTeam.abbreviation||aName).slice(0,3).toUpperCase()))+"</div> "+esc(aName)+"</td>";
+        for(var i=0;i<cols;i++){
+          var label=qLabels[i]||("Q"+(i+1));
+          var isCurrent=isLive&&(i+1)===period;
+          header+="<th"+(isCurrent?' style="color:#fb923c"':"")+">"+label+"</th>";
+          hRow+="<td"+(isCurrent?' class="current-q"':"")+">"+(hLS[i]!==undefined?(hLS[i].value!==undefined?hLS[i].value:hLS[i]):"—")+"</td>";
+          aRow+="<td"+(isCurrent?' class="current-q"':"")+">"+(aLS[i]!==undefined?(aLS[i].value!==undefined?aLS[i].value:aLS[i]):"—")+"</td>";
+        }
+        header+="<th>Total</th></tr>";
+        hRow+="<td class='total'>"+hScore+"</td></tr>";
+        aRow+="<td class='total'>"+aScore+"</td></tr>";
+        return "<table class='quarters-table'>"+header+hRow+aRow+"</table>";
+      }
+
+      /* Logo */
+      function logoHtml(team){ if(team.logo) return '<img src="'+esc(team.logo)+'" alt="'+esc(team.abbreviation||"")+'" onerror="this.style.display=\'none\'">'; return '<span style="font-size:11px;font-weight:800;color:var(--text-2)">'+esc((team.abbreviation||team.shortDisplayName||"?").slice(0,3))+'</span>'; }
+
+      /* Temps affiché */
+      var timeLabel,timeClass="";
+      if(isLive)       { timeLabel="🟠 En direct · Q"+(period||"?")+" — "+(clock||""); timeClass="live"; }
+      else if(isFinished){ timeLabel="Terminé"; timeClass="finished"; }
+      else             { timeLabel=fmtShort(matchDate)+" · "+fmt(matchDate); }
+
+      /* Chrono live (défile en temps réel) */
+      var clockHtml=isLive&&clock
+        ? '<div class="game-clock" id="clock-'+mid+'">'+esc(clock)+' — Q'+(period||"?")+'</div>'
+        : "";
+
+      /* Date badge */
+      var dateBadge=isFinished?'<div class="match-date-badge" style="margin-bottom:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> '+esc(fmtFull(matchDate))+' · '+fmt(matchDate)+'</div>':"";
+
+      /* Cotes dynamiques */
+      var odds=calcOdds(hName,aName);
+      var analysis=generateAnalysis(hName,aName,odds);
+      var spreadLabel=odds.spread>0?"-"+odds.spread+"/+"+(odds.spread):"+"+Math.abs(odds.spread)+"/-"+Math.abs(odds.spread);
+
+      var predHtml=!isFinished?('<div class="odds-basket">' +
+        '<div class="odds-row-2">' +
+          '<div class="odd-btn'+(odds.diff>30?' fav':'')+'" onclick="window.eppToast(\'Cote : '+esc(hName)+' gagne — '+odds.home+'\')"><span class="od-label">'+esc(hName.split(" ").pop())+'</span><span class="od-val">'+odds.home+'</span></div>' +
+          '<div class="odd-btn'+(odds.diff<-30?' fav':'')+'" onclick="window.eppToast(\'Cote : '+esc(aName)+' gagne — '+odds.away+'\')"><span class="od-label">'+esc(aName.split(" ").pop())+'</span><span class="od-val">'+odds.away+'</span></div>' +
+        '</div>' +
+        '<div class="odds-ou">' +
+          '<div class="odd-btn" style="flex:1" onclick="window.eppToast(\'Over '+odds.ou+' — 1.90\')"><span class="od-label">Over '+odds.ou+'</span><span class="od-val">1.90</span></div>' +
+          '<div class="odd-btn" style="flex:1" onclick="window.eppToast(\'Under '+odds.ou+' — 1.90\')"><span class="od-label">Under '+odds.ou+'</span><span class="od-val">1.90</span></div>' +
+          '<div class="odd-btn" style="flex:1" data-toast="Spread disponible en VIP"><span class="od-label">Spread</span><span class="od-val">'+spreadLabel+'</span></div>' +
+        '</div>' +
+        '<div class="conf-row"><span class="conf-label">Confiance IA</span><div class="conf-bar"><div class="conf-fill" style="width:'+odds.conf+'%"></div></div><span class="conf-pct">'+odds.conf+'%</span></div>' +
+        '<div class="match-analysis"><div class="analysis-head"><span class="badge badge-vip" style="font-size:9px;padding:3px 8px">IA</span> Notre analyse</div><p class="analysis-text">'+esc(analysis)+'</p><a href="tarifs.html" class="analysis-lock">🔒 Analyse complète &amp; stats avancées — Plan VIP</a></div>' +
+      '</div>'):"";
+
+      var hWins=isFinished&&hScore>aScore, aWins=isFinished&&aScore>hScore;
+      var venue=(comp.venue&&comp.venue.fullName)?'<div style="font-size:12px;color:var(--text-3);margin:10px 0 0;display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(comp.venue.fullName)+'</div>':"";
+
+      return '<div class="match-card'+(isLive?' live-card':'')+'">' +
+        '<div class="match-top">' +
+          '<span class="match-comp">🏀 '+(currentLeague==="euroleague"?"EuroLeague":"NBA")+'</span>' +
+          '<span class="match-time '+timeClass+'">'+(isLive?'<span id="clock-'+mid+'">'+esc(clock)+' — Q'+(period||"?")+'</span>':timeLabel)+'</span>' +
+        '</div>' +
+        dateBadge +
+        '<div class="basket-body">' +
+          '<div class="basket-team'+(hWins?' winner':'')+'"><div class="bt-left"><div class="team-logo">'+logoHtml(hTeam)+'</div><div><div class="bt-name">'+esc(hName)+'</div></div></div><div class="bt-score'+(isLive&&hScore>aScore?' leading':'')+'">'+((isLive||isFinished)?hScore:(fmtShort(matchDate)))+'</div></div>' +
+          '<div class="basket-team'+(aWins?' winner':'')+'"><div class="bt-left"><div class="team-logo">'+logoHtml(aTeam)+'</div><div><div class="bt-name">'+esc(aName)+'</div></div></div><div class="bt-score'+(isLive&&aScore>hScore?' leading':'')+'">'+((isLive||isFinished)?aScore:"")+'</div></div>' +
+        '</div>' +
+        quartersHtml() +
+        venue +
+        predHtml +
+      '</div>';
+    }
+
+    /* ── Rendu onglet ── */
+    function renderTab(tab){
+      currentTab=tab;
+      var c=document.getElementById("games-container"); if(!c) return;
+      var events=filterByTab(tab);
+      if(!events.length){
+        var msgs={live:{ico:"📺",title:"Aucun match en direct",sub:"Aucun match NBA en cours. Consultez « À venir » ou « Terminés »."},upcoming:{ico:"📅",title:"Aucun match à venir",sub:"Aucun match programmé aujourd'hui pour cette ligue."},finished:{ico:"✅",title:"Aucun résultat",sub:"Aucun match terminé trouvé."}};
+        var m=msgs[tab]||msgs.live;
+        c.innerHTML='<div class="state-empty"><div class="e-ico">'+m.ico+'</div><h3>'+m.title+'</h3><p>'+m.sub+'</p></div>';
+        return;
+      }
+      c.innerHTML=events.map(renderGame).join("");
+      startClockTick();
+    }
+
+    function showError(msg){
+      var c=document.getElementById("games-container"); if(!c) return;
+      c.innerHTML='<div class="state-empty"><div class="e-ico">⚡</div><h3>Données indisponibles</h3><p>Impossible de récupérer les matchs.</p><br><button class="btn btn-ghost" onclick="fetchGames(true)" style="margin:0 auto">Réessayer</button></div>';
+    }
+
+    document.querySelectorAll(".tab-btn").forEach(function(btn){
+      btn.addEventListener("click",function(){ document.querySelectorAll(".tab-btn").forEach(function(b){b.classList.remove("active");}); btn.classList.add("active"); renderTab(btn.getAttribute("data-tab")); });
+    });
+    document.querySelectorAll(".comp-pill").forEach(function(pill){
+      pill.addEventListener("click",function(){
+        document.querySelectorAll(".comp-pill").forEach(function(p){p.classList.remove("active");}); pill.classList.add("active");
+        currentLeague=pill.getAttribute("data-league");
+        document.querySelectorAll(".tab-btn").forEach(function(b){b.classList.remove("active");}); document.querySelector('[data-tab="live"]').classList.add("active"); currentTab="live";
+        document.getElementById("games-container").innerHTML=skeleton(); fetchGames(true);
+      });
+    });
+    function startAutoRefresh(){ clearInterval(refreshTimer); refreshTimer=setInterval(function(){fetchGames(false);},REFRESH_MS); }
+    document.getElementById("games-container").innerHTML=skeleton();
+    fetchGames(false); startAutoRefresh();
+    var yr=document.getElementById("year"); if(yr) yr.textContent=new Date().getFullYear();
+  })();
+  </script>
+</body>
+</html>
