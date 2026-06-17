@@ -366,12 +366,12 @@
 
       <!-- Filtres championnats -->
       <div class="comp-filters reveal">
-        <button class="comp-pill active" data-comp="fifa.world">🌍 Coupe du Monde</button>
-        <button class="comp-pill" data-comp="UEFA.CHAMPIONS">🏆 Ligue des Champions</button>
-        <button class="comp-pill" data-comp="FRA.1">🇫🇷 Ligue 1</button>
-        <button class="comp-pill" data-comp="ENG.1">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</button>
-        <button class="comp-pill" data-comp="ESP.1">🇪🇸 La Liga</button>
-        <button class="comp-pill" data-comp="GER.1">🇩🇪 Bundesliga</button>
+        <button class="comp-pill active" data-comp="WC">🌍 Coupe du Monde</button>
+        <button class="comp-pill" data-comp="CL">🏆 Ligue des Champions</button>
+        <button class="comp-pill" data-comp="FL1">🇫🇷 Ligue 1</button>
+        <button class="comp-pill" data-comp="PL">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</button>
+        <button class="comp-pill" data-comp="PD">🇪🇸 La Liga</button>
+        <button class="comp-pill" data-comp="BL1">🇩🇪 Bundesliga</button>
       </div>
 
       <div class="football-layout">
@@ -528,240 +528,189 @@
     "use strict";
 
     /* ── Config ── */
-    var currentComp = "fifa.world";
-    var currentTab  = "live";
-    var refreshTimer = null;
-    var REFRESH_INTERVAL = 60000; // 60 secondes
+    var currentComp    = "WC";   // code football-data.org
+    var currentTab     = "live";
+    var refreshTimer   = null;
+    var REFRESH_MS     = 60000;
+    var allMatches     = [];     // tableau brut de l'API
 
-    /* Pronostics IA fictifs associés à des matchs (clé = noms équipes) */
-    var AI_PREDS = {
-      default: { tip: "Victoire domicile", odds: "1.85", conf: 72 }
-    };
+    /* Statuts football-data.org → onglet */
+    var LIVE_STATUSES     = ["IN_PLAY", "PAUSED", "LIVE"];
+    var UPCOMING_STATUSES = ["SCHEDULED", "TIMED"];
+    var FINISHED_STATUSES = ["FINISHED"];
+
+    var AI_PRED = { tip: "Victoire domicile", odds: "1.85", conf: 72 };
 
     /* ── Utilitaires ── */
-    function fmt(date) {
-      return date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-    }
-    function fmtDate(date) {
-      return date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
-    }
-    function escHtml(s) {
-      return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    function fmt(d) { return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); }
+    function fmtFull(d) { return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); }
+    function fmtShort(d) { return d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }); }
+    function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+    function skeleton() {
+      return '<div class="match-skeleton"><div class="sk-line sk-h1"></div><div class="sk-line sk-h2"></div><div class="sk-line sk-h3"></div></div>'.repeat(4);
     }
 
-    /* ── Fetch données ESPN ── */
-    function buildUrl(comp) {
-      return "https://site.api.espn.com/apis/site/v2/sports/soccer/" + comp + "/scoreboard";
-    }
-
-    var allEvents = [];
-
+    /* ── Fetch via fonction Netlify ── */
     window.fetchMatches = function(manual) {
       var btn = document.getElementById("refresh-btn");
       if (btn && manual) btn.classList.add("spinning");
 
-      fetch(buildUrl(currentComp))
+      var url = "/.netlify/functions/football?comp=" + encodeURIComponent(currentComp);
+
+      fetch(url)
         .then(function(r) {
           if (!r.ok) throw new Error("HTTP " + r.status);
           return r.json();
         })
         .then(function(data) {
-          allEvents = data.events || [];
+          if (data.error) throw new Error(data.error);
+          allMatches = data.matches || [];
           renderTab(currentTab);
-          updateLastUpdate();
-          updateSidebarStats();
+          updateMeta();
           if (btn) btn.classList.remove("spinning");
         })
         .catch(function(err) {
-          console.warn("ESPN API error:", err);
-          showError();
+          console.warn("football-data.org error:", err);
+          showError(err.message);
           if (btn) btn.classList.remove("spinning");
         });
     };
 
-    function updateLastUpdate() {
-      var el = document.getElementById("last-update");
-      if (el) el.textContent = "Mis à jour à " + fmt(new Date());
+    function updateMeta() {
+      var live = allMatches.filter(function(m) { return LIVE_STATUSES.indexOf(m.status) !== -1; });
+      var el;
+      el = document.getElementById("last-update");   if (el) el.textContent = "Mis à jour à " + fmt(new Date());
+      el = document.getElementById("live-count");    if (el) el.textContent = live.length;
+      el = document.getElementById("stat-live");     if (el) el.textContent = live.length;
+      el = document.getElementById("stat-count");    if (el) el.textContent = allMatches.length;
     }
 
-    function updateSidebarStats() {
-      var live = allEvents.filter(function(e) {
-        return e.status && e.status.type && e.status.type.state === "in";
-      });
-      var liveEl = document.getElementById("stat-live");
-      var countEl = document.getElementById("stat-count");
-      var liveCountEl = document.getElementById("live-count");
-      if (liveEl) liveEl.textContent = live.length;
-      if (countEl) countEl.textContent = allEvents.length;
-      if (liveCountEl) liveCountEl.textContent = live.length || 0;
+    /* ── Filtrage ── */
+    function filterByTab(tab) {
+      var allowed = tab === "live" ? LIVE_STATUSES : (tab === "upcoming" ? UPCOMING_STATUSES : FINISHED_STATUSES);
+      return allMatches.filter(function(m) { return allowed.indexOf(m.status) !== -1; });
     }
 
-    /* ── Filtrage par onglet ── */
-    function filterEvents(tab) {
-      return allEvents.filter(function(e) {
-        var state = e.status && e.status.type ? e.status.type.state : "pre";
-        if (tab === "live")     return state === "in";
-        if (tab === "upcoming") return state === "pre";
-        if (tab === "finished") return state === "post";
-        return true;
-      });
+    /* ── Buteurs ── */
+    function buildScorerHtml(goals, teamId, alignRight) {
+      var mine = (goals || []).filter(function(g) { return g.team && String(g.team.id) === String(teamId); });
+      if (!mine.length) return "";
+      var html = mine.map(function(g) {
+        var name = esc((g.scorer && g.scorer.name) || "");
+        var min  = g.minute ? g.minute + "'" : "";
+        var type = g.type || "NORMAL";
+        var ico  = type === "OWN_GOAL" ? '<span class="og">⚽(csc)</span>' : (type === "PENALTY" ? '<span class="pen">⚽(p)</span>' : "⚽");
+        return '<span class="scorer-item">' + ico + ' ' + name + (min ? ' <span style="color:var(--text-3);font-size:10px">' + min + '</span>' : '') + '</span>';
+      }).join("");
+      return '<div class="scorers-row' + (alignRight ? ' right' : '') + '">' + html + '</div>';
     }
 
-    /* ── Extraction des buteurs depuis comp.details ── */
-    function extractScorers(comp, homeTeamId, awayTeamId) {
-      var details = comp.details || [];
-      var homeScorers = [];
-      var awayScorers = [];
+    /* ── Rendu d'un match ── */
+    function renderMatch(m) {
+      var homeTeam   = m.homeTeam || {};
+      var awayTeam   = m.awayTeam || {};
+      var score      = m.score || {};
+      var ft         = score.fullTime || {};
+      var competition= m.competition || {};
 
-      details.forEach(function(d) {
-        var typeText = (d.type && d.type.text) ? d.type.text.toLowerCase() : "";
-        var isGoal = typeText.indexOf("goal") !== -1 || typeText.indexOf("penalty") !== -1;
-        if (!isGoal) return;
+      var status     = m.status || "SCHEDULED";
+      var isLive     = LIVE_STATUSES.indexOf(status) !== -1;
+      var isFinished = FINISHED_STATUSES.indexOf(status) !== -1;
+      var isPaused   = status === "PAUSED";
 
-        var player = "";
-        if (d.athletesInvolved && d.athletesInvolved.length > 0) {
-          player = d.athletesInvolved[0].displayName || d.athletesInvolved[0].shortName || "";
-        }
-        if (!player) return;
+      var matchDate  = new Date(m.utcDate || Date.now());
+      var homeName   = esc(homeTeam.name || homeTeam.shortName || "—");
+      var awayName   = esc(awayTeam.name || awayTeam.shortName || "—");
+      var homeScore  = (isLive || isFinished) ? (ft.home !== null && ft.home !== undefined ? ft.home : "—") : "—";
+      var awayScore  = (isLive || isFinished) ? (ft.away !== null && ft.away !== undefined ? ft.away : "—") : "—";
 
-        var minute = (d.clock && d.clock.displayValue) ? d.clock.displayValue + "'" : "";
-        var isOG = typeText.indexOf("own") !== -1;
-        var isPen = typeText.indexOf("penalty") !== -1;
-        var teamId = d.team && d.team.id ? d.team.id : "";
+      /* Temps affiché */
+      var timeLabel, timeClass = "";
+      if (isLive && !isPaused) { timeLabel = "🔴 En direct" + (m.minute ? " · " + m.minute + "'" : ""); timeClass = "live"; }
+      else if (isPaused)        { timeLabel = "⏸ Mi-temps";   timeClass = "live"; }
+      else if (isFinished)      { timeLabel = "Terminé";       timeClass = "finished"; }
+      else                      { timeLabel = fmtShort(matchDate) + " · " + fmt(matchDate); }
 
-        var entry = { player: player, minute: minute, isOG: isOG, isPen: isPen };
-
-        if (teamId === homeTeamId || (!teamId && homeScorers.length <= awayScorers.length)) {
-          homeScorers.push(entry);
-        } else {
-          awayScorers.push(entry);
-        }
-      });
-
-      return { home: homeScorers, away: awayScorers };
-    }
-
-    function buildScorerHtml(scorers) {
-      if (!scorers || scorers.length === 0) return "";
-      return '<div class="scorers-row">' +
-        scorers.map(function(s) {
-          var cls = s.isOG ? " og" : (s.isPen ? " pen" : "");
-          var ico = s.isOG ? "⚽(csc)" : (s.isPen ? "⚽(p)" : "⚽");
-          return '<span class="scorer-item"><span class="goal-ico' + cls + '">' + ico + '</span>' +
-            escHtml(s.player) + (s.minute ? ' <span style="color:var(--text-3);font-size:10px">' + s.minute + '</span>' : '') +
-          '</span>';
-        }).join("") +
-      '</div>';
-    }
-
-    /* ── Rendu HTML d'un match ── */
-    function renderMatch(event) {
-      var comp = event.competitions && event.competitions[0];
-      if (!comp) return "";
-      var competitors = comp.competitors || [];
-      var home = competitors.find(function(c) { return c.homeAway === "home"; }) || competitors[0] || {};
-      var away = competitors.find(function(c) { return c.homeAway === "away"; }) || competitors[1] || {};
-      var state = event.status && event.status.type ? event.status.type.state : "pre";
-      var isLive = state === "in";
-      var isFinished = state === "post";
-
-      var homeTeam = (home.team || {});
-      var awayTeam = (away.team || {});
-      var homeScore = home.score !== undefined ? home.score : "-";
-      var awayScore = away.score !== undefined ? away.score : "-";
-      var homeLogo = homeTeam.logo || "";
-      var awayLogo = awayTeam.logo || "";
-      var homeName = escHtml(homeTeam.displayName || homeTeam.name || "Équipe A");
-      var awayName = escHtml(awayTeam.displayName || awayTeam.name || "Équipe B");
-
-      var matchDate = new Date(event.date || Date.now());
-      var timeStr = isLive ? "En direct" : (isFinished ? "Terminé · " + fmtDate(matchDate) : fmtDate(matchDate) + " · " + fmt(matchDate));
-      var timeClass = isLive ? "live" : (isFinished ? "finished" : "");
+      /* Logos — fallback sur les initiales si pas d'image */
+      function logoHtml(team) {
+        if (team.crest) return '<img src="' + esc(team.crest) + '" alt="' + esc(team.shortName || team.name || "") + '" onerror="this.style.display=\'none\'">';
+        return '<span style="font-size:13px;font-weight:700;color:var(--text-2)">' + esc((team.tla || team.shortName || "?").slice(0,3)) + '</span>';
+      }
 
       /* Buteurs */
-      var scorers = (isLive || isFinished)
-        ? extractScorers(comp, homeTeam.id, awayTeam.id)
-        : { home: [], away: [] };
-      var homeScorersHtml = buildScorerHtml(scorers.home);
-      var awayScorersHtml = buildScorerHtml(scorers.away);
+      var goals = m.goals || [];
+      var hSco  = buildScorerHtml(goals, homeTeam.id, false);
+      var aSco  = buildScorerHtml(goals, awayTeam.id, true);
 
-      var minuteHtml = "";
-      if (isLive && event.status && event.status.displayClock) {
-        minuteHtml = '<span class="score-minute">⏱ ' + escHtml(event.status.displayClock) + "'</span>";
-      }
-
-      var scoreHtml = isLive || isFinished
+      /* Score central */
+      var scoreHtml = (isLive || isFinished)
         ? '<div class="score-display"><span class="s">' + homeScore + '</span><span class="sep">—</span><span class="s">' + awayScore + '</span></div>'
-        : '<div class="score-pre">À venir</div>';
+        : '<div class="score-pre">' + fmt(matchDate) + '</div>';
 
-      /* Date badge pour matchs terminés */
-      var dateBadgeHtml = "";
-      if (isFinished) {
-        var fullDate = matchDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-        dateBadgeHtml = '<span class="match-date-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' + escHtml(fullDate) + ' · ' + fmt(matchDate) + '</span>';
-      }
+      var minuteHtml = (isLive && !isPaused && m.minute)
+        ? '<span class="score-minute">⏱ ' + m.minute + "'</span>"
+        : (isPaused ? '<span class="score-minute" style="background:rgba(212,175,55,0.15);color:var(--gold)">⏸ Mi-temps</span>' : "");
 
-      var venue = (comp.venue && comp.venue.fullName) ? escHtml(comp.venue.fullName) : "";
-      var venueHtml = venue ? '<span class="match-venue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>' + venue + '</span>' : '<span></span>';
-
-      var pred = AI_PREDS[homeName] || AI_PREDS[awayName] || AI_PREDS.default;
-      var predHtml = !isFinished
-        ? '<div class="match-pred"><div><div class="mp-label">Pronostic IA</div><div class="mp-val">' + pred.tip + '</div></div><div><div class="mp-label">Cote</div><div class="mp-val">' + pred.odds + '</div></div><div class="mp-conf">' + pred.conf + '% confiance</div><div class="mp-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Analyse VIP</div></div>'
+      /* Date badge matchs terminés */
+      var dateBadge = isFinished
+        ? '<div style="margin-bottom:14px"><span class="match-date-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' + esc(fmtFull(matchDate)) + ' · ' + fmt(matchDate) + '</span></div>'
         : "";
 
-      var logoHome = homeLogo
-        ? '<img src="' + homeLogo + '" alt="' + homeName + '" onerror="this.style.display=\'none\'">'
-        : homeTeam.abbreviation || homeName.slice(0,3).toUpperCase();
-      var logoAway = awayLogo
-        ? '<img src="' + awayLogo + '" alt="' + awayName + '" onerror="this.style.display=\'none\'">'
-        : awayTeam.abbreviation || awayName.slice(0,3).toUpperCase();
+      /* Stade */
+      var venue = (m.venue) ? '<span class="match-venue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>' + esc(m.venue) + '</span>' : '<span></span>';
+
+      /* Pronostic IA (uniquement matchs à venir / en direct) */
+      var predHtml = !isFinished
+        ? '<div class="match-pred"><div><div class="mp-label">Pronostic IA</div><div class="mp-val">' + AI_PRED.tip + '</div></div><div><div class="mp-label">Cote</div><div class="mp-val">' + AI_PRED.odds + '</div></div><div class="mp-conf">' + AI_PRED.conf + '% confiance</div><div class="mp-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>VIP</div></div>'
+        : "";
 
       return '<div class="match-card' + (isLive ? ' live-card' : '') + '">' +
         '<div class="match-top">' +
-          '<span class="match-comp">⚽ ' + escHtml(event.name || "Football") + '</span>' +
-          '<span class="match-time ' + timeClass + '">' + timeStr + '</span>' +
+          '<span class="match-comp">⚽ ' + esc(competition.name || "Football") + '</span>' +
+          '<span class="match-time ' + timeClass + '">' + timeLabel + '</span>' +
         '</div>' +
-        (isFinished && dateBadgeHtml ? '<div style="margin-bottom:14px">' + dateBadgeHtml + '</div>' : '') +
+        dateBadge +
         '<div class="match-body">' +
           '<div class="match-team home">' +
-            '<div class="team-logo">' + logoHome + '</div>' +
-            '<div><span class="team-name">' + homeName + '</span>' + homeScorersHtml + '</div>' +
+            '<div class="team-logo">' + logoHtml(homeTeam) + '</div>' +
+            '<div><span class="team-name">' + homeName + '</span>' + hSco + '</div>' +
           '</div>' +
           '<div class="match-score-box">' + scoreHtml + minuteHtml + '</div>' +
           '<div class="match-team away">' +
-            '<div style="text-align:right"><span class="team-name">' + awayName + '</span>' + awayScorersHtml + '</div>' +
-            '<div class="team-logo">' + logoAway + '</div>' +
+            '<div style="text-align:right"><span class="team-name">' + awayName + '</span>' + aSco + '</div>' +
+            '<div class="team-logo">' + logoHtml(awayTeam) + '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="match-footer">' + venueHtml + predHtml + '</div>' +
+        '<div class="match-footer">' + venue + predHtml + '</div>' +
       '</div>';
     }
 
-    /* ── Rendu de l'onglet actif ── */
+    /* ── Rendu de l'onglet ── */
     function renderTab(tab) {
       currentTab = tab;
       var container = document.getElementById("matches-container");
       if (!container) return;
-      var events = filterEvents(tab);
-
-      if (events.length === 0) {
+      var matches = filterByTab(tab);
+      if (!matches.length) {
         var msgs = {
-          live: { ico: "📺", title: "Aucun match en direct", sub: "Pas de match en cours pour ce championnat. Consultez les onglets « À venir » ou « Terminés »." },
-          upcoming: { ico: "📅", title: "Aucun match à venir", sub: "Le calendrier ne montre pas de prochain match pour ce championnat pour l'instant." },
-          finished: { ico: "✅", title: "Aucun résultat disponible", sub: "Aucun match terminé trouvé pour cette journée." }
+          live:     { ico: "📺", title: "Aucun match en direct",    sub: "Aucun match en cours. Consultez « À venir » ou « Terminés »." },
+          upcoming: { ico: "📅", title: "Aucun match à venir",      sub: "Pas de prochain match programmé pour ce championnat aujourd'hui." },
+          finished: { ico: "✅", title: "Aucun résultat disponible", sub: "Aucun match terminé pour cette journée." }
         };
         var m = msgs[tab] || msgs.live;
         container.innerHTML = '<div class="state-empty"><div class="e-ico">' + m.ico + '</div><h3>' + m.title + '</h3><p>' + m.sub + '</p></div>';
         return;
       }
-
-      container.innerHTML = events.map(renderMatch).join("");
+      container.innerHTML = matches.map(renderMatch).join("");
     }
 
-    function showError() {
+    function showError(msg) {
       var container = document.getElementById("matches-container");
       if (!container) return;
-      container.innerHTML = '<div class="state-empty"><div class="e-ico">⚡</div><h3>Connexion impossible</h3><p>Impossible de récupérer les données en temps réel. Vérifiez votre connexion ou réessayez dans quelques secondes.</p><br><button class="btn btn-ghost" onclick="fetchMatches(true)" style="margin:0 auto">Réessayer</button></div>';
+      var extra = msg && msg.indexOf("FOOTBALL_DATA_KEY") !== -1
+        ? "<br><small style='color:var(--gold)'>⚠ Ajoutez la variable FOOTBALL_DATA_KEY dans les paramètres Netlify.</small>"
+        : "";
+      container.innerHTML = '<div class="state-empty"><div class="e-ico">⚡</div><h3>Données indisponibles</h3><p>Impossible de récupérer les matchs en temps réel.' + extra + '</p><br><button class="btn btn-ghost" onclick="fetchMatches(true)" style="margin:0 auto">Réessayer</button></div>';
     }
 
     /* ── Onglets ── */
@@ -779,23 +728,22 @@
         document.querySelectorAll(".comp-pill").forEach(function(p) { p.classList.remove("active"); });
         pill.classList.add("active");
         currentComp = pill.getAttribute("data-comp");
-        // Reset onglet sur "live"
         document.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.remove("active"); });
         document.querySelector('[data-tab="live"]').classList.add("active");
         currentTab = "live";
-        // Vider + recharger
-        document.getElementById("matches-container").innerHTML = '<div class="match-skeleton"><div class="sk-line sk-h1"></div><div class="sk-line sk-h2"></div><div class="sk-line sk-h3"></div></div>';
+        document.getElementById("matches-container").innerHTML = skeleton();
         fetchMatches(true);
       });
     });
 
-    /* ── Auto-refresh toutes les 60s ── */
+    /* ── Auto-refresh ── */
     function startAutoRefresh() {
       clearInterval(refreshTimer);
-      refreshTimer = setInterval(function() { fetchMatches(false); }, REFRESH_INTERVAL);
+      refreshTimer = setInterval(function() { fetchMatches(false); }, REFRESH_MS);
     }
 
     /* ── Init ── */
+    document.getElementById("matches-container").innerHTML = skeleton();
     fetchMatches(false);
     startAutoRefresh();
 
