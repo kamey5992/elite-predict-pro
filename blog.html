@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blog & Analyses — Elite Predict Pro</title>
+  <meta name="description" content="Analyses sportives, stratégies de paris et actualités par nos experts. Football, Basketball, Tennis, gestion de bankroll." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+  <style>
+    .page-hero { padding: 140px 0 60px; position: relative; overflow: hidden; }
+    .page-hero .hero-mesh { position: absolute; inset: -10% -10% 0 -10%; z-index: 0; pointer-events: none; }
+    .page-hero .wrap { position: relative; z-index: 2; }
+    .page-hero h1 { font-family: var(--font-head); font-weight: 800; font-size: clamp(34px,5vw,60px); letter-spacing: -0.03em; margin: 14px 0 12px; }
+    .page-hero p { font-size: 17px; color: var(--text-2); max-width: 520px; }
+
+    /* Filtres sport */
+    .blog-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 36px; }
+    .blog-pill { padding: 7px 18px; border-radius: 99px; font-family: var(--font-label); font-size: 12.5px; font-weight: 600; border: 1px solid var(--border-strong); color: var(--text-2); transition: all .2s; cursor: pointer; white-space: nowrap; }
+    .blog-pill:hover { border-color: rgba(255,255,255,0.2); color: var(--text-1); }
+    .blog-pill.active { background: var(--gold-grad); color: #0A0A0A; border-color: transparent; box-shadow: 0 4px 14px rgba(212,175,55,0.3); }
+
+    /* Layout blog */
+    .blog-layout { display: grid; grid-template-columns: 1fr 300px; gap: 36px; align-items: start; }
+    .blog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
+
+    /* Article card */
+    .article-card {
+      background: var(--glass); border: 1px solid var(--border-strong);
+      border-radius: var(--radius); overflow: hidden;
+      transition: transform .3s var(--ease-spring), box-shadow .3s, border-color .3s;
+    }
+    .article-card:hover { transform: translateY(-5px); box-shadow: 0 20px 50px rgba(0,0,0,0.35); border-color: rgba(255,255,255,0.12); }
+    .article-card.hidden { display: none; }
+
+    .article-thumb {
+      height: 160px; display: flex; align-items: center; justify-content: center;
+      font-size: 52px; position: relative; overflow: hidden;
+    }
+    .article-thumb::before { content: ""; position: absolute; inset: 0; opacity: 0.9; }
+    .thumb-foot::before  { background: linear-gradient(135deg, #064e3b, #065f46); }
+    .thumb-bask::before  { background: linear-gradient(135deg, #7c2d12, #9a3412); }
+    .thumb-tenn::before  { background: linear-gradient(135deg, #713f12, #854d0e); }
+    .thumb-gen::before   { background: linear-gradient(135deg, #1e1b4b, #312e81); }
+    .article-thumb span { position: relative; z-index: 1; }
+
+    .article-body { padding: 20px; }
+    .article-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .sport-pill { font-family: var(--font-label); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 4px 10px; border-radius: 99px; }
+    .pill-foot { background: rgba(16,185,129,0.12); color: #34d399; }
+    .pill-bask { background: rgba(249,115,22,0.12); color: #fb923c; }
+    .pill-tenn { background: rgba(234,179,8,0.12); color: #facc15; }
+    .pill-gen  { background: rgba(139,92,246,0.12); color: #a78bfa; }
+    .read-time { font-size: 11.5px; color: var(--text-3); }
+
+    .article-title { font-family: var(--font-head); font-weight: 700; font-size: 17px; line-height: 1.35; margin-bottom: 10px; letter-spacing: -0.01em; }
+    .article-excerpt { font-size: 13.5px; color: var(--text-2); line-height: 1.6; margin-bottom: 18px; }
+    .article-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; border-top: 1px solid var(--border); }
+    .author { display: flex; align-items: center; gap: 9px; }
+    .author-avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-head); font-weight: 700; font-size: 11px; color: #0A0A0A; }
+    .author-name { font-size: 12.5px; font-weight: 600; color: var(--text-1); }
+    .author-date { font-size: 11.5px; color: var(--text-3); }
+    .read-btn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-label); font-size: 12.5px; font-weight: 700; color: var(--gold-light); transition: gap .2s; }
+    .read-btn:hover { gap: 10px; }
+
+    /* Sidebar */
+    .blog-sidebar { position: sticky; top: 94px; }
+    .sidebar-card { background: var(--glass); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 22px; margin-bottom: 18px; }
+    .sidebar-card h4 { font-family: var(--font-head); font-weight: 700; font-size: 16px; margin-bottom: 18px; }
+
+    .popular-list { display: flex; flex-direction: column; gap: 14px; }
+    .popular-item { display: flex; gap: 12px; align-items: flex-start; }
+    .pop-num { font-family: var(--font-head); font-weight: 800; font-size: 22px; color: rgba(255,255,255,0.08); min-width: 24px; line-height: 1; }
+    .pop-title { font-size: 13.5px; font-weight: 600; color: var(--text-1); line-height: 1.4; margin-bottom: 3px; }
+    .pop-meta { font-size: 11.5px; color: var(--text-3); }
+
+    .tags-cloud { display: flex; flex-wrap: wrap; gap: 7px; }
+    .tag-chip { padding: 5px 12px; border-radius: 99px; font-family: var(--font-label); font-size: 11.5px; font-weight: 600; border: 1px solid var(--border-strong); color: var(--text-2); cursor: pointer; transition: all .2s; }
+    .tag-chip:hover { border-color: var(--gold); color: var(--gold); }
+
+    .newsletter-input { display: flex; gap: 8px; margin-top: 14px; }
+    .newsletter-input input { flex: 1; background: var(--bg-1); border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 14px; color: var(--text-1); font-size: 13.5px; outline: none; }
+    .newsletter-input input:focus { border-color: rgba(212,175,55,0.4); }
+
+    /* Featured (grande carte) */
+    .article-card.featured .article-thumb { height: 220px; }
+    .article-card.featured .article-title { font-size: 21px; }
+
+    @media (max-width: 1100px) { .blog-layout { grid-template-columns: 1fr; } .blog-sidebar { position: static; } }
+    @media (max-width: 720px) { .blog-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="scroll-progress"></div>
+
+  <header class="nav" id="nav">
+    <div class="wrap nav-inner">
+      <a href="index.html" class="logo">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
+        <span>Elite Predict <b>Pro</b></span>
+      </a>
+      <nav class="nav-links">
+        <div class="has-menu">
+          <button>Pronostics <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <div class="dropdown">
+            <a href="football.html"><span class="ico">⚽</span> Football</a>
+            <a href="basketball.html"><span class="ico">🏀</span> Basketball</a>
+            <a href="tennis.html"><span class="ico">🎾</span> Tennis</a>
+          </div>
+        </div>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="blog.html" style="color:var(--text-1)">Blog</a>
+        <a href="tarifs.html">Tarifs</a>
+      </nav>
+      <div class="nav-right">
+        <button class="nav-icon-btn" data-open-search aria-label="Rechercher"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
+        <a href="#" class="nav-link-login" data-toast="Connexion — formulaire à venir">Connexion</a>
+        <a href="tarifs.html" class="btn btn-gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Essai Gratuit</a>
+        <button class="nav-icon-btn burger" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="search-overlay" id="search-overlay">
+    <div class="search-box">
+      <div class="search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input type="text" id="search-input" placeholder="Rechercher un article, un sport…" /><kbd>ESC</kbd></div>
+      <div class="search-results"><div class="group-label">Accès rapide</div><a href="football.html"><span class="ico">⚽</span> Pronostics Football</a><a href="tarifs.html"><span class="ico">👑</span> Offres VIP</a></div>
+    </div>
+  </div>
+
+  <section class="page-hero">
+    <div class="hero-mesh">
+      <span class="mesh-blob g1"></span><span class="mesh-blob g2"></span>
+    </div>
+    <div class="wrap">
+      <span class="eyebrow reveal">Analyses & Actualités</span>
+      <h1 class="reveal" data-delay="60">Blog <span class="text-gold">Elite Predict Pro</span></h1>
+      <p class="reveal" data-delay="120">Stratégies de paris, analyses d'experts, guides de bankroll et actualités sportives. Tout pour progresser.</p>
+    </div>
+  </section>
+
+  <section class="pad" style="padding-top:40px">
+    <div class="wrap">
+      <div class="blog-filters reveal">
+        <button class="blog-pill active" data-filter="all">Tous les articles</button>
+        <button class="blog-pill" data-filter="foot">⚽ Football</button>
+        <button class="blog-pill" data-filter="bask">🏀 Basketball</button>
+        <button class="blog-pill" data-filter="tenn">🎾 Tennis</button>
+        <button class="blog-pill" data-filter="gen">💡 Stratégie</button>
+      </div>
+
+      <div class="blog-layout">
+        <div>
+          <div class="blog-grid" id="blog-grid">
+
+            <!-- Article 1 — FEATURED -->
+            <article class="article-card featured reveal" data-sport="foot" style="grid-column:1/-1">
+              <div class="article-thumb thumb-foot"><span>⚽</span></div>
+              <div class="article-body">
+                <div class="article-meta">
+                  <span class="sport-pill pill-foot">Football</span>
+                  <span class="read-time">⏱ 8 min</span>
+                  <span class="badge badge-vip" style="font-size:9px">Exclusif VIP</span>
+                </div>
+                <div class="article-title">Coupe du Monde 2026 : notre analyse complète des phases de groupes et nos picks pour les huitièmes</div>
+                <div class="article-excerpt">Avec 48 équipes pour la première fois de l'histoire, le format de la Coupe du Monde 2026 change tout. Notre équipe a analysé les 12 groupes, identifié les surprises probables et sélectionné les meilleures valeurs pour les paris de phase de groupes. Argentine, France, Brésil : qui est vraiment favori et à quelle cote ?</div>
+                <div class="article-footer">
+                  <div class="author"><div class="author-avatar" style="background:linear-gradient(135deg,#D4AF37,#F0D060)">LM</div><div><div class="author-name">Lucas Martin</div><div class="author-date">15 juin 2026</div></div></div>
+                  <a href="#" class="read-btn" onclick="window.eppToast&&window.eppToast('Article complet — accès VIP')">Lire l'analyse <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>
+                </div>
+              </div>
+            </article>
+
+            <!-- Article 2 -->
+            <article class="article-card reveal" data-delay="60" data-sport="bask">
+              <div class="article-thumb thumb-bask"><span>🏀</span></div>
+              <div class="article-body">
+                <div class="article-meta"><span class="sport-pill pill-bask">Basketball</span><span class="read-time">⏱ 6 min</span></div>
+                <div class="article-title">NBA Finals 2026 : analyse tactique avant le match 7 décisif</div>
+                <div class="article-excerpt">Lakers vs Celtics en finale, 3-3 après 6 matchs. Nos analystes décortiquent les rotations, les matchups clés et les tendances statistiques pour trouver la valeur sur le match 7.</div>
+                <div class="article-footer">
+                  <div class="author"><div class="author-avatar" style="background:linear-gradient(135deg,#3B82F6,#60A5FA)">KZ</div><div><div class="author-name">Kevin Zhang</div><div class="author-date">12 juin 2026</div></div></div>
+                  <a href="#" class="read-btn" onclick="window.eppToast&&window.eppToast('Article complet — accès Premium')">Lire →</a>
+                </div>
+              </div>
+            </article>
+
+            <!-- Article 3 -->
+            <article class="article-card reveal" data-delay="80" data-sport="gen">
+              <div class="article-thumb thumb-gen"><span>💡</span></div>
+              <div class="article-body">
+                <div class="article-meta"><span class="sport-pill pill-gen">Stratégie</span><span class="read-time">⏱ 10 min</span></div>
+                <div class="article-title">Gestion de bankroll : les 5 règles absolues des parieurs rentables</div>
+                <div class="article-excerpt">La bankroll est la seule chose qui sépare un parieur amateur d'un parieur professionnel. Unités, Kelly Criterion, discipline — voici les règles que nos experts respectent à la lettre.</div>
+                <div class="article-footer">
+                  <div class="author"><div class="author-avatar" style="background:linear-gradient(135deg,#8B5CF6,#a78bfa)">MD</div><div><div class="author-name">Marc Dubois</div><div class="author-date">8 juin 2026</div></div></div>
+                  <a href="#" class="read-btn" onclick="window.eppToast&&window.eppToast('Article gratuit — bientôt disponible')">Lire →</a>
+                </div>
+              </div>
+            </article>
+
+            <!-- Article 4 -->
+            <article class="article-card reveal" data-sport="tenn">
+              <div class="article-thumb thumb-tenn"><span>🎾</span></div>
+              <div class="article-body">
+                <div class="article-meta"><span class="sport-pill pill-tenn">Tennis</span><span class="read-time">⏱ 5 min</span></div>
+                <div class="article-title">Wimbledon 2026 : qui succédera à Alcaraz sur gazon cette saison ?</div>
+                <div class="article-excerpt">Sinner, Djokovic, Fritz — le gazon de Wimbledon a ses lois. Notre analyse surface-par-surface montre pourquoi les stats H2H sur herbe ne correspondent pas aux classements ATP généraux.</div>
+                <div class="article-footer">
+                  <div class="author"><div class="author-avatar" style="background:linear-gradient(135deg,#10B981,#34d399)">SR</div><div><div class="author-name">Sophie Renard</div><div class="author-date">10 juin 2026</div></div></div>
+                  <a href="#" class="read-btn" onclick="window.eppToast&&window.eppToast('Article complet — bientôt disponible')">Lire →</a>
+                </div>
+              </div>
+            </article>
+
+            <!-- Article 5 -->
+            <article class="article-card reveal" data-delay="60" data-sport="foot">
+              <div class="article-thumb thumb-foot"><span>🤖</span></div>
+              <div class="article-body">
+                <div class="article-meta"><span class="sport-pill pill-foot">Football</span><span class="read-time">⏱ 7 min</span></div>
+                <div class="article-title">Comment notre IA analyse 2 000 variables avant chaque match</div>
+                <div class="article-excerpt">Forme récente, blessures, météo, historique head-to-head, distances parcourues, statistiques xG — voici comment fonctionne le moteur prédictif d'Elite Predict Pro sous le capot.</div>
+                <div class="article-footer">
+                  <div class="author"><div class="author-avatar" style="background:linear-gradient(135deg,#D4AF37,#F0D060)">TL</div><div><div class="author-name">Thomas Leclerc</div><div class="author-date">5 juin 2026</div></div></div>
+                  <a href="#" class="read-btn" onclick="window.eppToast&&window.eppToast('Article complet — bientôt disponible')">Lire →</a>
+                </div>
+              </div>
+            </article>
+
+            <!-- Article 6 -->
+            <article class="article-card reveal" data-delay="80" data-sport="gen">
+              <div class="article-thumb thumb-gen"><span>📊</span></div>
+              <div class="article-body">
+                <div class="article-meta"><span class="sport-pill pill-gen">Stratégie</span><span class="read-time">⏱ 4 min</span></div>
+                <div class="article-title">Cotes décimales, fractionnaires et américaines : le guide complet</div>
+                <div class="article-excerpt">Vous voyez "2.10", "11/10" ou "+110" et vous ne savez pas lequel choisir ? Ce guide traduit tout en probabilités réelles et vous montre où se cache la valeur selon le format.</div>
+                <div class="article-footer">
+                  <div class="author"><div class="author-avatar" style="background:linear-gradient(135deg,#F97316,#fb923c)">EW</div><div><div class="author-name">Emma Wilson</div><div class="author-date">2 juin 2026</div></div></div>
+                  <a href="#" class="read-btn" onclick="window.eppToast&&window.eppToast('Article gratuit — bientôt disponible')">Lire →</a>
+                </div>
+              </div>
+            </article>
+
+            <!-- Article 7 -->
+            <article class="article-card reveal" data-sport="tenn">
+              <div class="article-thumb thumb-tenn"><span>🏆</span></div>
+              <div class="article-body">
+                <div class="article-meta"><span class="sport-pill pill-tenn">Tennis</span><span class="read-time">⏱ 6 min</span></div>
+                <div class="article-title">Roland-Garros 2026 : bilan complet et 5 statistiques surprenantes</div>
+                <div class="article-excerpt">Iga Świątek a régné, mais c'est Holger Rune qui a créé la surprise chez les hommes. Notre bilan chiffré révèle les tendances cachées qui auraient rapporté gros aux parieurs avisés.</div>
+                <div class="article-footer">
+                  <div class="author"><div class="author-avatar" style="background:linear-gradient(135deg,#10B981,#34d399)">SR</div><div><div class="author-name">Sophie Renard</div><div class="author-date">28 mai 2026</div></div></div>
+                  <a href="#" class="read-btn" onclick="window.eppToast&&window.eppToast('Article complet — bientôt disponible')">Lire →</a>
+                </div>
+              </div>
+            </article>
+
+            <!-- Article 8 -->
+            <article class="article-card reveal" data-delay="60" data-sport="bask">
+              <div class="article-thumb thumb-bask"><span>📈</span></div>
+              <div class="article-body">
+                <div class="article-meta"><span class="sport-pill pill-bask">Basketball</span><span class="read-time">⏱ 5 min</span></div>
+                <div class="article-title">Over/Under NBA en playoffs : notre stratégie qui a généré +18u ce mois</div>
+                <div class="article-excerpt">Les totaux de points en playoffs NBA sont systématiquement mal évalués par les bookmakers. Notre modèle de pace ajusté a généré 18 unités de profit en mai. Explications et données.</div>
+                <div class="article-footer">
+                  <div class="author"><div class="author-avatar" style="background:linear-gradient(135deg,#3B82F6,#60A5FA)">KZ</div><div><div class="author-name">Kevin Zhang</div><div class="author-date">25 mai 2026</div></div></div>
+                  <a href="#" class="read-btn" onclick="window.eppToast&&window.eppToast('Article complet — accès VIP')">Lire →</a>
+                </div>
+              </div>
+            </article>
+
+            <!-- Article 9 -->
+            <article class="article-card reveal" data-delay="80" data-sport="gen">
+              <div class="article-thumb thumb-gen"><span>🎯</span></div>
+              <div class="article-body">
+                <div class="article-meta"><span class="sport-pill pill-gen">Stratégie</span><span class="read-time">⏱ 8 min</span></div>
+                <div class="article-title">Les 7 erreurs classiques des parieurs débutants (et comment les éviter)</div>
+                <div class="article-excerpt">Parier sur son équipe favorite, ignorer la valeur des cotes, ne pas tenir de journal — ces erreurs coûtent des milliers d'euros chaque année. Notre analyse des 500 parieurs débutants de notre communauté.</div>
+                <div class="article-footer">
+                  <div class="author"><div class="author-avatar" style="background:linear-gradient(135deg,#8B5CF6,#a78bfa)">MD</div><div><div class="author-name">Marc Dubois</div><div class="author-date">20 mai 2026</div></div></div>
+                  <a href="#" class="read-btn" onclick="window.eppToast&&window.eppToast('Article gratuit — bientôt disponible')">Lire →</a>
+                </div>
+              </div>
+            </article>
+
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <aside class="blog-sidebar">
+          <div class="sidebar-card reveal">
+            <h4>🔥 Articles populaires</h4>
+            <div class="popular-list">
+              <div class="popular-item"><span class="pop-num">01</span><div><div class="pop-title">Gestion de bankroll : les 5 règles absolues</div><div class="pop-meta">💡 Stratégie · 10 min</div></div></div>
+              <div class="popular-item"><span class="pop-num">02</span><div><div class="pop-title">Coupe du Monde 2026 : analyse phases de groupes</div><div class="pop-meta">⚽ Football · 8 min</div></div></div>
+              <div class="popular-item"><span class="pop-num">03</span><div><div class="pop-title">Over/Under NBA : notre stratégie +18u</div><div class="pop-meta">🏀 Basketball · 5 min</div></div></div>
+              <div class="popular-item"><span class="pop-num">04</span><div><div class="pop-title">Les 7 erreurs des parieurs débutants</div><div class="pop-meta">💡 Stratégie · 8 min</div></div></div>
+            </div>
+          </div>
+
+          <div class="sidebar-card reveal" data-delay="80">
+            <h4>🏷️ Tags</h4>
+            <div class="tags-cloud">
+              <span class="tag-chip">Football</span>
+              <span class="tag-chip">NBA</span>
+              <span class="tag-chip">Tennis</span>
+              <span class="tag-chip">Bankroll</span>
+              <span class="tag-chip">CDM 2026</span>
+              <span class="tag-chip">Playoffs</span>
+              <span class="tag-chip">Over/Under</span>
+              <span class="tag-chip">IA Prédictive</span>
+              <span class="tag-chip">Cotes</span>
+              <span class="tag-chip">VIP</span>
+              <span class="tag-chip">Analyse</span>
+              <span class="tag-chip">Wimbledon</span>
+            </div>
+          </div>
+
+          <div class="sidebar-card reveal" data-delay="160" style="background:linear-gradient(135deg,rgba(212,175,55,0.08),rgba(13,17,32,0.95));border-color:rgba(212,175,55,0.25)">
+            <h4 style="color:var(--gold)">📬 Newsletter</h4>
+            <p style="font-size:13.5px;color:var(--text-2);margin-bottom:4px">Recevez nos analyses chaque semaine directement dans votre boîte mail. Gratuit, sans spam.</p>
+            <form id="newsletter" style="margin-top:14px">
+              <div class="newsletter-input">
+                <input type="email" placeholder="Votre e-mail" required />
+                <button type="submit" class="btn btn-gold" style="padding:10px 16px;font-size:13px">OK</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="sidebar-card reveal" data-delay="200">
+            <h4>✍️ Nos auteurs</h4>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;gap:12px"><div class="author-avatar" style="background:linear-gradient(135deg,#D4AF37,#F0D060);width:38px;height:38px;font-size:13px">LM</div><div><div style="font-weight:600;font-size:13.5px">Lucas Martin</div><div style="font-size:12px;color:var(--text-3)">Expert Football · 12 ans d'expérience</div></div></div>
+              <div style="display:flex;align-items:center;gap:12px"><div class="author-avatar" style="background:linear-gradient(135deg,#3B82F6,#60A5FA);width:38px;height:38px;font-size:13px">KZ</div><div><div style="font-weight:600;font-size:13.5px">Kevin Zhang</div><div style="font-size:12px;color:var(--text-3)">Analyste NBA · Ex-consultant DraftKings</div></div></div>
+              <div style="display:flex;align-items:center;gap:12px"><div class="author-avatar" style="background:linear-gradient(135deg,#10B981,#34d399);width:38px;height:38px;font-size:13px">SR</div><div><div style="font-weight:600;font-size:13.5px">Sophie Renard</div><div style="font-size:12px;color:var(--text-3)">Spécialiste Tennis · Commentatrice RMC</div></div></div>
+              <div style="display:flex;align-items:center;gap:12px"><div class="author-avatar" style="background:linear-gradient(135deg,#8B5CF6,#a78bfa);width:38px;height:38px;font-size:13px">MD</div><div><div style="font-weight:600;font-size:13.5px">Marc Dubois</div><div style="font-size:12px;color:var(--text-3)">Stratège Paris Sportifs · 8 ans pro</div></div></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="f-col"><a href="index.html" class="logo"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span><span>Elite Predict <b>Pro</b></span></a><p class="f-desc">Pronostics premium propulsés par l'IA.</p></div>
+        <div class="f-col"><h4>Navigation</h4><a href="football.html">Football</a><a href="basketball.html">Basketball</a><a href="tennis.html">Tennis</a><a href="tarifs.html">Tarifs</a></div>
+        <div class="f-col"><h4>Légal</h4><a href="#" data-toast="Page à venir">CGU</a><a href="#" data-toast="Page à venir">Jeu responsable</a></div>
+        <div class="f-col"><h4>Blog</h4><a href="blog.html">Toutes les analyses</a><a href="#" data-toast="Newsletter à venir">Newsletter</a></div>
+      </div>
+      <div class="footer-bar"><div class="copy">© <span id="year"></span> Elite Predict Pro.</div><div class="links"><a href="#" data-toast="Page à venir">CGU</a><a href="#" data-toast="Page à venir">Confidentialité</a></div></div>
+      <p class="footer-disclaimer">Les paris sportifs comportent des risques. Réservé aux personnes majeures (18+).</p>
+    </div>
+  </footer>
+
+  <button id="back-top" aria-label="Retour en haut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>
+  <div id="toasts"></div>
+  <script src="assets/app.js"></script>
+  <script>
+    /* Filtre blog par sport */
+    document.querySelectorAll(".blog-pill").forEach(function(pill) {
+      pill.addEventListener("click", function() {
+        document.querySelectorAll(".blog-pill").forEach(function(p) { p.classList.remove("active"); });
+        pill.classList.add("active");
+        var filter = pill.getAttribute("data-filter");
+        document.querySelectorAll(".article-card").forEach(function(card) {
+          var sport = card.getAttribute("data-sport");
+          if (filter === "all" || sport === filter) card.classList.remove("hidden");
+          else card.classList.add("hidden");
+        });
+      });
+    });
+    var yr = document.getElementById("year"); if (yr) yr.textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

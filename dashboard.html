@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Premium — Elite Predict Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+  <style>
+    body { background: var(--bg-1); }
+
+    /* ── Layout Dashboard ── */
+    .dash-wrapper { display: flex; min-height: 100vh; padding-top: 74px; }
+
+    /* Sidebar */
+    .dash-sidebar {
+      width: 260px; flex-shrink: 0;
+      background: var(--bg-2); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      position: fixed; top: 74px; left: 0; bottom: 0; overflow-y: auto; z-index: 10;
+    }
+    .sidebar-user {
+      padding: 24px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 14px;
+    }
+    .user-avatar {
+      width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+      background: var(--gold-grad); display: grid; place-items: center;
+      font-family: var(--font-head); font-weight: 800; font-size: 18px; color: #0A0A0A;
+      box-shadow: 0 0 20px rgba(212,175,55,0.3);
+    }
+    .user-name { font-weight: 700; font-size: 15px; }
+    .user-plan { display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; font-family: var(--font-label); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
+
+    .sidebar-nav { padding: 16px 12px; flex: 1; }
+    .nav-section-label { font-family: var(--font-label); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); padding: 12px 8px 6px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 12px; border-radius: 10px;
+      font-size: 14px; font-weight: 500; color: var(--text-2);
+      transition: all .2s; cursor: pointer; margin-bottom: 2px;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-1); }
+    .nav-item.active { background: rgba(212,175,55,0.10); color: var(--gold-light); font-weight: 600; }
+    .nav-item .ni-ico { width: 20px; text-align: center; font-size: 16px; }
+    .nav-item .ni-badge { margin-left: auto; background: rgba(239,68,68,0.15); color: #f87171; border-radius: 99px; padding: 2px 8px; font-family: var(--font-label); font-size: 10px; font-weight: 700; }
+
+    .sidebar-footer { padding: 16px 12px; border-top: 1px solid var(--border); }
+    .sidebar-footer a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; color: var(--text-2); transition: all .2s; }
+    .sidebar-footer a:hover { background: rgba(255,255,255,0.04); color: var(--text-1); }
+
+    /* Main content */
+    .dash-main { margin-left: 260px; flex: 1; padding: 32px 36px; min-height: 100vh; }
+
+    /* Welcome bar */
+    .welcome-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(135deg, rgba(212,175,55,0.10), rgba(59,130,246,0.08));
+      border: 1px solid rgba(212,175,55,0.25); border-radius: 18px;
+      padding: 20px 28px; margin-bottom: 28px;
+    }
+    .welcome-text h2 { font-family: var(--font-head); font-weight: 800; font-size: 22px; margin-bottom: 4px; }
+    .welcome-text p { font-size: 14px; color: var(--text-2); }
+    .welcome-date { font-family: var(--font-label); font-size: 12px; color: var(--text-3); text-align: right; }
+
+    /* KPI cards */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+    .kpi {
+      background: var(--glass); border: 1px solid var(--border-strong);
+      border-radius: var(--radius); padding: 20px 22px;
+      transition: transform .3s var(--ease-spring);
+    }
+    .kpi:hover { transform: translateY(-3px); }
+    .kpi-label { font-family: var(--font-label); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
+    .kpi-val { font-family: var(--font-head); font-weight: 800; font-size: 34px; letter-spacing: -0.03em; line-height: 1; margin-bottom: 8px; }
+    .kpi-val.gold { color: var(--gold); }
+    .kpi-val.green { color: #34d399; }
+    .kpi-val.blue { color: var(--blue-light); }
+    .kpi-delta { font-size: 12px; color: var(--text-3); display: flex; align-items: center; gap: 5px; }
+    .kpi-delta .up { color: #34d399; }
+    .kpi-delta .down { color: #f87171; }
+
+    /* Sections */
+    .dash-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .dash-section-head h3 { font-family: var(--font-head); font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+    .dash-section-head a { font-family: var(--font-label); font-size: 12.5px; font-weight: 600; color: var(--gold); display: flex; align-items: center; gap: 5px; }
+
+    /* VIP Signals */
+    .signals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+    .signal-card {
+      background: var(--glass); border: 1px solid var(--border-strong); border-radius: 14px; padding: 18px;
+      transition: transform .3s var(--ease-spring), box-shadow .3s;
+      position: relative;
+    }
+    .signal-card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.3); }
+    .signal-sport { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .sport-tag { font-family: var(--font-label); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 4px 10px; border-radius: 99px; }
+    .tag-foot { background: rgba(16,185,129,0.12); color: #34d399; }
+    .tag-bask { background: rgba(249,115,22,0.12); color: #fb923c; }
+    .tag-tenn { background: rgba(234,179,8,0.12); color: #facc15; }
+    .signal-conf { font-size: 11px; color: var(--text-3); font-family: var(--font-label); }
+    .signal-match { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+    .signal-pick { font-size: 13px; color: var(--text-2); margin-bottom: 14px; }
+    .signal-pick strong { color: var(--gold-light); }
+    .signal-footer { display: flex; align-items: center; justify-content: space-between; }
+    .signal-odds { font-family: var(--font-head); font-weight: 800; font-size: 24px; color: var(--gold-light); }
+    .signal-bar { flex: 1; height: 4px; background: rgba(255,255,255,0.07); border-radius: 99px; overflow: hidden; margin: 0 14px; }
+    .signal-bar-fill { height: 100%; border-radius: 99px; background: var(--gold-grad); }
+
+    /* Performance chart */
+    .chart-panel { background: var(--glass); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 24px; margin-bottom: 28px; }
+    .chart-stats { display: flex; gap: 28px; margin-bottom: 20px; flex-wrap: wrap; }
+    .cs-item { }
+    .cs-label { font-family: var(--font-label); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); margin-bottom: 4px; }
+    .cs-val { font-family: var(--font-head); font-weight: 800; font-size: 22px; }
+    .cs-val.green { color: #34d399; }
+    .cs-val.gold { color: var(--gold); }
+
+    /* SVG chart */
+    .chart-svg-wrap { position: relative; }
+    .chart-labels { display: flex; justify-content: space-between; margin-top: 8px; }
+    .chart-labels span { font-family: var(--font-label); font-size: 10px; color: var(--text-3); }
+
+    /* Historique table */
+    .hist-panel { background: var(--glass); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 24px; }
+    .hist-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .hist-table thead th { font-family: var(--font-label); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+    .hist-table tbody td { padding: 13px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-2); vertical-align: middle; }
+    .hist-table tbody td:first-child { color: var(--text-3); font-size: 12px; }
+    .hist-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+    .result-win { display: inline-flex; align-items: center; gap: 5px; color: #34d399; font-family: var(--font-label); font-size: 11.5px; font-weight: 700; }
+    .result-loss { display: inline-flex; align-items: center; gap: 5px; color: #f87171; font-family: var(--font-label); font-size: 11.5px; font-weight: 700; }
+    .pl-pos { color: #34d399; font-family: var(--font-head); font-weight: 700; }
+    .pl-neg { color: #f87171; font-family: var(--font-head); font-weight: 700; }
+
+    /* Alertes panel */
+    .alerts-panel { background: var(--glass); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 24px; margin-bottom: 28px; }
+    .alert-item { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-size: 17px; flex-shrink: 0; }
+    .alert-ico.live { background: rgba(239,68,68,0.12); }
+    .alert-ico.pre  { background: rgba(212,175,55,0.12); }
+    .alert-text { flex: 1; }
+    .alert-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
+    .alert-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+    .alert-time { font-family: var(--font-label); font-size: 11px; color: var(--text-3); white-space: nowrap; }
+
+    /* Responsive */
+    @media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .signals-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 900px) { .dash-sidebar { display: none; } .dash-main { margin-left: 0; padding: 20px; } }
+    @media (max-width: 640px) { .kpi-grid { grid-template-columns: 1fr; } .signals-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+  <div id="scroll-progress"></div>
+
+  <!-- NAVBAR -->
+  <header class="nav scrolled" id="nav" style="background:rgba(8,11,20,0.95);border-bottom:1px solid var(--border)">
+    <div class="wrap nav-inner">
+      <a href="index.html" class="logo">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
+        <span>Elite Predict <b>Pro</b></span>
+      </a>
+      <nav class="nav-links">
+        <a href="football.html">Football</a>
+        <a href="basketball.html">Basketball</a>
+        <a href="tennis.html">Tennis</a>
+        <a href="dashboard.html" style="color:var(--text-1)">Dashboard</a>
+        <a href="blog.html">Blog</a>
+        <a href="tarifs.html">Tarifs</a>
+      </nav>
+      <div class="nav-right">
+        <span class="badge badge-vip" style="font-size:11px">VIP</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="user-avatar" style="width:36px;height:36px;font-size:14px">TM</div>
+          <span style="font-size:14px;font-weight:600;color:var(--text-1)">Thomas M.</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="dash-wrapper">
+
+    <!-- SIDEBAR -->
+    <aside class="dash-sidebar">
+      <div class="sidebar-user">
+        <div class="user-avatar">TM</div>
+        <div>
+          <div class="user-name">Thomas M.</div>
+          <div class="user-plan">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:10px;height:10px"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            Membre VIP
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Principal</div>
+        <div class="nav-item active"><span class="ni-ico">📊</span> Tableau de bord</div>
+        <div class="nav-item" onclick="window.eppToast&&window.eppToast('Mes Pronostics — page à venir')"><span class="ni-ico">⚽</span> Mes Pronostics <span class="ni-badge">14</span></div>
+        <div class="nav-item" onclick="window.eppToast&&window.eppToast('Favoris — page à venir')"><span class="ni-ico">❤️</span> Favoris</div>
+        <div class="nav-section-label">Alertes</div>
+        <div class="nav-item" onclick="window.eppToast&&window.eppToast('Alertes — page à venir')"><span class="ni-ico">🔔</span> Alertes actives <span class="ni-badge" style="background:rgba(239,68,68,0.15);color:#f87171">3</span></div>
+        <div class="nav-item" onclick="window.eppToast&&window.eppToast('Discord VIP')"><span class="ni-ico">💬</span> Discord VIP</div>
+        <div class="nav-section-label">Compte</div>
+        <div class="nav-item" onclick="window.eppToast&&window.eppToast('Historique — page à venir')"><span class="ni-ico">📜</span> Historique</div>
+        <div class="nav-item" onclick="window.eppToast&&window.eppToast('Paramètres — page à venir')"><span class="ni-ico">⚙️</span> Paramètres</div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="tarifs.html"><span style="font-size:16px">👑</span> Gérer mon abonnement</a>
+        <a href="index.html"><span style="font-size:16px">🚪</span> Se déconnecter</a>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="dash-main">
+
+      <!-- Welcome -->
+      <div class="welcome-bar">
+        <div class="welcome-text">
+          <h2>Bonjour Thomas, voici vos signaux du jour ⚡</h2>
+          <p>14 nouveaux pronostics VIP publiés · 3 alertes en attente · Taux du mois : 81%</p>
+        </div>
+        <div class="welcome-date">
+          <div style="font-size:16px;font-weight:700;color:var(--text-1)" id="dash-date"></div>
+          <div style="margin-top:4px">Dernière connexion : aujourd'hui 08h47</div>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Pronostics suivis</div>
+          <div class="kpi-val">47</div>
+          <div class="kpi-delta"><span class="up">↑ +8</span> ce mois</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Mon taux de réussite</div>
+          <div class="kpi-val green">81%</div>
+          <div class="kpi-delta"><span class="up">↑ +3%</span> vs mois dernier</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Gains estimés (unités)</div>
+          <div class="kpi-val gold">+24.8</div>
+          <div class="kpi-delta"><span class="up">↑ +6.2u</span> ce mois</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Alertes actives</div>
+          <div class="kpi-val blue">12</div>
+          <div class="kpi-delta"><span style="color:var(--text-3)">3 urgentes</span></div>
+        </div>
+      </div>
+
+      <!-- Alertes -->
+      <div class="dash-section-head">
+        <h3><span style="font-size:20px">🔔</span> Alertes en attente</h3>
+        <a href="#" onclick="window.eppToast&&window.eppToast('Toutes les alertes — page à venir')">Tout voir →</a>
+      </div>
+      <div class="alerts-panel" style="margin-bottom:28px">
+        <div class="alert-item">
+          <div class="alert-ico live">🔴</div>
+          <div class="alert-text">
+            <div class="alert-title">Portugal — Congo RD · Signal VIP publié</div>
+            <div class="alert-sub">Pronostic : Portugal gagne · Cote 1.22 · Confiance 88%</div>
+          </div>
+          <div class="alert-time">Aujourd'hui · 16h30</div>
+        </div>
+        <div class="alert-item">
+          <div class="alert-ico pre">⚡</div>
+          <div class="alert-text">
+            <div class="alert-title">Angleterre — Croatie · Démarrage dans 2h</div>
+            <div class="alert-sub">Notre pick : Angleterre gagne · Cote 1.90 · Confiance 74%</div>
+          </div>
+          <div class="alert-time">Aujourd'hui · 20h00</div>
+        </div>
+        <div class="alert-item">
+          <div class="alert-ico pre">📊</div>
+          <div class="alert-text">
+            <div class="alert-title">NBA · Lakers — Celtics · Signal Over/Under</div>
+            <div class="alert-sub">Signal : Over 221.5 pts · Cote 1.88 · Confiance 71%</div>
+          </div>
+          <div class="alert-time">Demain · 03h30</div>
+        </div>
+      </div>
+
+      <!-- Signaux VIP du jour -->
+      <div class="dash-section-head">
+        <h3><span style="font-size:20px">👑</span> Signaux VIP du jour</h3>
+        <a href="football.html">Tous les matchs →</a>
+      </div>
+      <div class="signals-grid">
+        <div class="signal-card">
+          <div class="signal-sport">
+            <span class="sport-tag tag-foot">⚽ Football</span>
+            <span class="signal-conf">CDM 2026 · Groupe F</span>
+          </div>
+          <div class="signal-match">Portugal — Congo RD</div>
+          <div class="signal-pick">Pick : <strong>Portugal gagne</strong> · Handicap -1.5</div>
+          <div class="signal-footer">
+            <div class="signal-odds">1.22</div>
+            <div class="signal-bar"><div class="signal-bar-fill" style="width:88%"></div></div>
+            <span style="font-size:12px;color:var(--gold);font-weight:700">88%</span>
+          </div>
+        </div>
+        <div class="signal-card">
+          <div class="signal-sport">
+            <span class="sport-tag tag-foot">⚽ Football</span>
+            <span class="signal-conf">CDM 2026 · Groupe D</span>
+          </div>
+          <div class="signal-match">Angleterre — Croatie</div>
+          <div class="signal-pick">Pick : <strong>Angleterre gagne</strong> · Résultat final</div>
+          <div class="signal-footer">
+            <div class="signal-odds">1.90</div>
+            <div class="signal-bar"><div class="signal-bar-fill" style="width:74%"></div></div>
+            <span style="font-size:12px;color:var(--gold);font-weight:700">74%</span>
+          </div>
+        </div>
+        <div class="signal-card">
+          <div class="signal-sport">
+            <span class="sport-tag tag-bask">🏀 NBA</span>
+            <span class="signal-conf">Playoffs 2026 · Finale</span>
+          </div>
+          <div class="signal-match">Lakers — Celtics</div>
+          <div class="signal-pick">Pick : <strong>Over 221.5 pts</strong> · Total de buts</div>
+          <div class="signal-footer">
+            <div class="signal-odds">1.88</div>
+            <div class="signal-bar"><div class="signal-bar-fill" style="width:71%"></div></div>
+            <span style="font-size:12px;color:var(--gold);font-weight:700">71%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance chart -->
+      <div class="dash-section-head">
+        <h3><span style="font-size:20px">📈</span> Ma performance — 30 derniers jours</h3>
+        <span style="font-family:var(--font-label);font-size:12px;color:var(--text-3)">En unités (1u = 1% bankroll)</span>
+      </div>
+      <div class="chart-panel">
+        <div class="chart-stats">
+          <div class="cs-item"><div class="cs-label">Profit total</div><div class="cs-val green">+24.8u</div></div>
+          <div class="cs-item"><div class="cs-label">ROI</div><div class="cs-val gold">+18.4%</div></div>
+          <div class="cs-item"><div class="cs-label">Wins / Losses</div><div class="cs-val">38 / 9</div></div>
+          <div class="cs-item"><div class="cs-label">Série en cours</div><div class="cs-val green">+7W</div></div>
+        </div>
+        <div class="chart-svg-wrap">
+          <svg viewBox="0 0 700 180" width="100%" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+            <defs>
+              <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="#D4AF37" stop-opacity="0"/>
+              </linearGradient>
+              <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#3B82F6"/>
+                <stop offset="100%" stop-color="#D4AF37"/>
+              </linearGradient>
+            </defs>
+            <!-- Grid -->
+            <line x1="0" y1="150" x2="700" y2="150" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <line x1="0" y1="110" x2="700" y2="110" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="4,6"/>
+            <line x1="0" y1="70"  x2="700" y2="70"  stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="4,6"/>
+            <line x1="0" y1="30"  x2="700" y2="30"  stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="4,6"/>
+            <!-- Labels Y -->
+            <text x="0" y="155" fill="#64748B" font-size="10" font-family="Space Grotesk">0u</text>
+            <text x="0" y="115" fill="#64748B" font-size="10" font-family="Space Grotesk">+8u</text>
+            <text x="0" y="75"  fill="#64748B" font-size="10" font-family="Space Grotesk">+16u</text>
+            <text x="0" y="35"  fill="#64748B" font-size="10" font-family="Space Grotesk">+24u</text>
+            <!-- Area fill -->
+            <path d="M20,148 L44,142 L68,138 L92,145 L116,135 L140,128 L164,132 L188,120 L212,112 L236,118 L260,108 L284,100 L308,112 L332,98 L356,88 L380,94 L404,80 L428,70 L452,65 L476,72 L500,58 L524,48 L548,55 L572,42 L596,35 L620,28 L644,32 L668,24 L700,20 L700,150 L20,150 Z" fill="url(#chartGrad)"/>
+            <!-- Line -->
+            <polyline points="20,148 44,142 68,138 92,145 116,135 140,128 164,132 188,120 212,112 236,118 260,108 284,100 308,112 332,98 356,88 380,94 404,80 428,70 452,65 476,72 500,58 524,48 548,55 572,42 596,35 620,28 644,32 668,24 700,20" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- Today dot -->
+            <circle cx="700" cy="20" r="5" fill="#D4AF37" filter="drop-shadow(0 0 6px #D4AF37)"/>
+            <text x="688" y="14" fill="#D4AF37" font-size="10" font-family="Space Grotesk" font-weight="700">+24.8u</text>
+          </svg>
+          <div class="chart-labels">
+            <span>1 juin</span><span>7 juin</span><span>12 juin</span><span>17 juin</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Historique -->
+      <div class="dash-section-head">
+        <h3><span style="font-size:20px">📜</span> Historique récent</h3>
+        <a href="#" onclick="window.eppToast&&window.eppToast('Historique complet — page à venir')">Tout l'historique →</a>
+      </div>
+      <div class="hist-panel">
+        <table class="hist-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Match</th>
+              <th>Notre pick</th>
+              <th>Cote</th>
+              <th>Résultat</th>
+              <th>P/L</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>17/06</td><td>Argentine — Algérie</td><td>Argentine gagne</td><td>1.35</td><td><span class="result-win">✓ Gagné</span></td><td class="pl-pos">+0.35u</td></tr>
+            <tr><td>17/06</td><td>Autriche — Jordanie</td><td>Autriche gagne</td><td>1.58</td><td><span class="result-win">✓ Gagné</span></td><td class="pl-pos">+0.58u</td></tr>
+            <tr><td>16/06</td><td>Lakers — Celtics G6</td><td>Over 218.5</td><td>1.88</td><td><span class="result-win">✓ Gagné</span></td><td class="pl-pos">+0.88u</td></tr>
+            <tr><td>16/06</td><td>Alcaraz — Zverev</td><td>Alcaraz gagne</td><td>1.62</td><td><span class="result-win">✓ Gagné</span></td><td class="pl-pos">+0.62u</td></tr>
+            <tr><td>15/06</td><td>France — Maroc</td><td>Nul</td><td>3.80</td><td><span class="result-loss">✗ Perdu</span></td><td class="pl-neg">-1.00u</td></tr>
+            <tr><td>15/06</td><td>Sinner — Medvedev</td><td>Sinner gagne</td><td>1.48</td><td><span class="result-win">✓ Gagné</span></td><td class="pl-pos">+0.48u</td></tr>
+            <tr><td>14/06</td><td>Brésil — Mexique</td><td>Brésil gagne</td><td>1.55</td><td><span class="result-win">✓ Gagné</span></td><td class="pl-pos">+0.55u</td></tr>
+            <tr><td>14/06</td><td>Boston — NY Knicks G5</td><td>Boston gagne</td><td>1.72</td><td><span class="result-loss">✗ Perdu</span></td><td class="pl-neg">-1.00u</td></tr>
+            <tr><td>13/06</td><td>Espagne — Portugal</td><td>Espagne gagne</td><td>2.10</td><td><span class="result-win">✓ Gagné</span></td><td class="pl-pos">+1.10u</td></tr>
+            <tr><td>12/06</td><td>Angleterre — Sénégal</td><td>Angleterre gagne</td><td>1.45</td><td><span class="result-win">✓ Gagné</span></td><td class="pl-pos">+0.45u</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </main>
+  </div>
+
+  <div id="toasts"></div>
+  <script src="assets/app.js"></script>
+  <script>
+    var d = new Date();
+    var el = document.getElementById("dash-date");
+    if (el) el.textContent = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    var yr = document.getElementById("year"); if (yr) yr.textContent = d.getFullYear();
+  </script>
+</body>
+</html>
