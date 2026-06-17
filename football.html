@@ -247,6 +247,34 @@
     .stat-row .sr-r.gold { color: var(--gold); }
     .stat-row .sr-r.green { color: #34d399; }
 
+    /* Cotes 3-way */
+    .odds-3 {
+      display: flex; gap: 6px; margin-bottom: 12px;
+    }
+    .odd-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border-strong);
+      border-radius: 10px; padding: 8px 6px; cursor: pointer; transition: all .2s;
+    }
+    .odd-btn:hover { background: rgba(212,175,55,0.10); border-color: rgba(212,175,55,0.35); }
+    .odd-btn .od-label { font-family: var(--font-label); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+    .odd-btn .od-val { font-family: var(--font-head); font-weight: 800; font-size: 17px; color: var(--text-1); }
+    .odd-btn.fav { background: rgba(212,175,55,0.08); border-color: rgba(212,175,55,0.3); }
+    .odd-btn.fav .od-val { color: var(--gold-light); }
+
+    /* Analyse IA */
+    .match-analysis { font-size: 13px; color: var(--text-2); line-height: 1.55; }
+    .analysis-head { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; font-family: var(--font-label); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+    .analysis-text { margin-bottom: 8px; }
+    .analysis-lock { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--gold); font-weight: 600; }
+
+    /* Confiance bar */
+    .conf-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .conf-label { font-family: var(--font-label); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); white-space: nowrap; }
+    .conf-bar { flex: 1; height: 5px; border-radius: 99px; background: rgba(255,255,255,0.07); overflow: hidden; }
+    .conf-fill { height: 100%; border-radius: 99px; background: var(--gold-grad); }
+    .conf-pct { font-family: var(--font-head); font-weight: 700; font-size: 13px; color: var(--gold-light); white-space: nowrap; }
+
     /* Buteurs */
     .scorers-row {
       display: flex; flex-direction: column; gap: 3px;
@@ -528,18 +556,81 @@
     "use strict";
 
     /* ── Config ── */
-    var currentComp    = "WC";   // code football-data.org
+    var currentComp    = "WC";
     var currentTab     = "live";
     var refreshTimer   = null;
+    var clockTimer     = null;
     var REFRESH_MS     = 60000;
-    var allMatches     = [];     // tableau brut de l'API
+    var allMatches     = [];
+    var liveClocks     = {}; // id → { minute, fetchedAt, isPaused }
 
-    /* Statuts football-data.org → onglet */
     var LIVE_STATUSES     = ["IN_PLAY", "PAUSED", "LIVE"];
     var UPCOMING_STATUSES = ["SCHEDULED", "TIMED"];
     var FINISHED_STATUSES = ["FINISHED"];
 
-    var AI_PRED = { tip: "Victoire domicile", odds: "1.85", conf: 72 };
+    /* ── Table de force ELO (approximation FIFA rankings 2026) ── */
+    var ELO = {
+      "Argentina":1850,"France":1840,"England":1810,"Spain":1800,"Brazil":1790,
+      "Portugal":1780,"Netherlands":1770,"Belgium":1750,"Germany":1740,"Italy":1720,
+      "Croatia":1700,"Morocco":1680,"United States":1660,"USA":1660,"Mexico":1640,
+      "Uruguay":1630,"Colombia":1620,"Denmark":1610,"Switzerland":1600,"Austria":1580,
+      "Senegal":1570,"Ecuador":1560,"Tunisia":1540,"Australia":1530,"Japan":1530,
+      "South Korea":1520,"Korea Republic":1520,"Canada":1510,"Ghana":1500,
+      "Ivory Coast":1490,"Côte d'Ivoire":1490,"Algeria":1490,"Nigeria":1480,
+      "Poland":1470,"Serbia":1470,"Czech Republic":1460,"Czechia":1460,
+      "Turkey":1450,"Türkiye":1450,"Ukraine":1440,"Iran":1440,"Saudi Arabia":1430,
+      "Peru":1420,"Venezuela":1410,"Chile":1410,"Slovenia":1420,"Slovakia":1430,
+      "Scotland":1440,"Wales":1420,"Albania":1400,"Hungary":1410,"Romania":1420,
+      "Greece":1410,"Paraguay":1400,"Bolivia":1380,"Honduras":1370,"El Salvador":1360,
+      "Costa Rica":1390,"Jamaica":1360,"Panama":1340,"Jordan":1350,
+      "Congo DR":1350,"DR Congo":1350,"Democratic Republic of Congo":1350,
+      "Cameroon":1450,"Egypt":1440,"Mali":1430,"Guinea":1400,"Mozambique":1350,
+      "Tanzania":1330,"Iraq":1400,"Uzbekistan":1390,"Qatar":1380,"Oman":1360,
+      "Indonesia":1340,"New Zealand":1370
+    };
+    var DEFAULT_ELO = 1400;
+
+    function getElo(name) {
+      if (!name) return DEFAULT_ELO;
+      if (ELO[name]) return ELO[name];
+      var keys = Object.keys(ELO);
+      for (var i = 0; i < keys.length; i++) {
+        if (name.toLowerCase().indexOf(keys[i].toLowerCase()) !== -1 ||
+            keys[i].toLowerCase().indexOf(name.toLowerCase()) !== -1) return ELO[keys[i]];
+      }
+      return DEFAULT_ELO;
+    }
+
+    /* ── Calcul des cotes (modèle ELO + marge bookmaker 6%) ── */
+    function calcOdds(homeName, awayName) {
+      var hElo = getElo(homeName), aElo = getElo(awayName);
+      var diff = hElo - aElo;
+      var hExp = 1 / (1 + Math.pow(10, -diff / 400));
+      var aExp = 1 - hExp;
+      var drawP = Math.max(0.10, Math.min(0.32, 0.28 - Math.abs(diff) * 0.00025));
+      var hP = Math.max(0.04, hExp - drawP / 2);
+      var aP = Math.max(0.04, aExp - drawP / 2);
+      var tot = hP + drawP + aP;
+      hP /= tot; aP /= tot; drawP /= tot;
+      var M = 1.06; // marge
+      var hO = Math.round((1 / hP / M) * 100) / 100;
+      var dO = Math.round((1 / drawP / M) * 100) / 100;
+      var aO = Math.round((1 / aP / M) * 100) / 100;
+      var conf = Math.min(92, Math.max(52, 70 + Math.abs(diff) * 0.04));
+      var tip  = diff > 60 ? homeName : (diff < -60 ? awayName : "Match nul possible");
+      return { home: hO, draw: dO, away: aO, conf: Math.round(conf), tip: tip, diff: diff, hP: Math.round(hP*100), dP: Math.round(drawP*100), aP: Math.round(aP*100) };
+    }
+
+    /* ── Analyse IA dynamique ── */
+    function generateAnalysis(hName, aName, odds) {
+      var diff = Math.abs(odds.diff);
+      var fav  = odds.diff > 0 ? hName : aName;
+      var und  = odds.diff > 0 ? aName : hName;
+      if (diff > 220) return fav + " présente une supériorité technique et physique nette. " + und + " devra jouer en bloc défensif pour limiter l'écart. Victoire nette attendue pour le favori.";
+      if (diff > 120) return fav + " part favori selon les classements et la forme récente. " + und + " a néanmoins le potentiel pour créer la surprise, surtout sur coup de pied arrêté. Jeu serré en première mi-temps probable.";
+      if (diff > 50)  return "Léger avantage pour " + fav + " sur la base des dernières performances. " + und + " dispose d'un effectif compétitif — les cotes reflètent une incertitude réelle. Le match nul est une issue crédible.";
+      return "Affiche parfaitement équilibrée. " + hName + " et " + aName + " sont au coude-à-coude dans les classements FIFA. Tactique et état physique seront déterminants. Le nul est statistiquement l'issue la plus probable.";
+    }
 
     /* ── Utilitaires ── */
     function fmt(d) { return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); }
@@ -550,39 +641,71 @@
       return '<div class="match-skeleton"><div class="sk-line sk-h1"></div><div class="sk-line sk-h2"></div><div class="sk-line sk-h3"></div></div>'.repeat(4);
     }
 
-    /* ── Fetch via fonction Netlify ── */
+    /* ── Utilitaires ── */
+    function fmt(d) { return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); }
+    function fmtFull(d) { return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); }
+    function fmtShort(d) { return d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }); }
+    function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+    function skeleton() {
+      return '<div class="match-skeleton"><div class="sk-line sk-h1"></div><div class="sk-line sk-h2"></div><div class="sk-line sk-h3"></div></div>'.repeat(4);
+    }
+
+    /* ── Fetch ── */
     window.fetchMatches = function(manual) {
       var btn = document.getElementById("refresh-btn");
       if (btn && manual) btn.classList.add("spinning");
-
-      var url = "/.netlify/functions/football?comp=" + encodeURIComponent(currentComp);
-
-      fetch(url)
-        .then(function(r) {
-          if (!r.ok) throw new Error("HTTP " + r.status);
-          return r.json();
-        })
+      fetch("/.netlify/functions/football?comp=" + encodeURIComponent(currentComp))
+        .then(function(r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
         .then(function(data) {
           if (data.error) throw new Error(data.error);
           allMatches = data.matches || [];
+          initLiveClocks(allMatches);
           renderTab(currentTab);
           updateMeta();
           if (btn) btn.classList.remove("spinning");
         })
-        .catch(function(err) {
-          console.warn("football-data.org error:", err);
-          showError(err.message);
-          if (btn) btn.classList.remove("spinning");
-        });
+        .catch(function(err) { showError(err.message); if (btn) btn.classList.remove("spinning"); });
     };
 
     function updateMeta() {
       var live = allMatches.filter(function(m) { return LIVE_STATUSES.indexOf(m.status) !== -1; });
       var el;
-      el = document.getElementById("last-update");   if (el) el.textContent = "Mis à jour à " + fmt(new Date());
-      el = document.getElementById("live-count");    if (el) el.textContent = live.length;
-      el = document.getElementById("stat-live");     if (el) el.textContent = live.length;
-      el = document.getElementById("stat-count");    if (el) el.textContent = allMatches.length;
+      el = document.getElementById("last-update"); if (el) el.textContent = "Mis à jour à " + fmt(new Date());
+      el = document.getElementById("live-count");  if (el) el.textContent = live.length;
+      el = document.getElementById("stat-live");   if (el) el.textContent = live.length;
+      el = document.getElementById("stat-count");  if (el) el.textContent = allMatches.length;
+    }
+
+    /* ── Minuteur live qui défile en temps réel ── */
+    function initLiveClocks(matches) {
+      liveClocks = {};
+      matches.forEach(function(m) {
+        if (LIVE_STATUSES.indexOf(m.status) !== -1 && m.minute) {
+          liveClocks[String(m.id)] = {
+            minute: parseInt(m.minute) || 0,
+            fetchedAt: Date.now(),
+            isPaused: m.status === "PAUSED"
+          };
+        }
+      });
+    }
+
+    function startClockTick() {
+      clearInterval(clockTimer);
+      clockTimer = setInterval(function() {
+        var now = Date.now();
+        Object.keys(liveClocks).forEach(function(id) {
+          var c = liveClocks[id];
+          if (c.isPaused) return;
+          var elapsed = Math.floor((now - c.fetchedAt) / 60000);
+          var cur = Math.min(c.minute + elapsed, 90);
+          var el = document.getElementById("clock-" + id);
+          if (el) el.textContent = "⏱ " + cur + "'";
+          /* Met aussi à jour le badge dans match-top */
+          var elTop = document.getElementById("clocktop-" + id);
+          if (elTop) elTop.textContent = "🔴 En direct · " + cur + "'";
+        });
+      }, 30000); // toutes les 30s (granularité minutes)
     }
 
     /* ── Filtrage ── */
@@ -592,100 +715,132 @@
     }
 
     /* ── Buteurs ── */
-    function buildScorerHtml(goals, teamId, alignRight) {
+    function buildScorerHtml(goals, teamId) {
       var mine = (goals || []).filter(function(g) { return g.team && String(g.team.id) === String(teamId); });
       if (!mine.length) return "";
-      var html = mine.map(function(g) {
+      return '<div class="scorers-row">' + mine.map(function(g) {
         var name = esc((g.scorer && g.scorer.name) || "");
-        var min  = g.minute ? g.minute + "'" : "";
+        var min  = g.minute ? g.minute + (g.injuryTime ? "+" + g.injuryTime : "") + "'" : "";
         var type = g.type || "NORMAL";
         var ico  = type === "OWN_GOAL" ? '<span class="og">⚽(csc)</span>' : (type === "PENALTY" ? '<span class="pen">⚽(p)</span>' : "⚽");
         return '<span class="scorer-item">' + ico + ' ' + name + (min ? ' <span style="color:var(--text-3);font-size:10px">' + min + '</span>' : '') + '</span>';
-      }).join("");
-      return '<div class="scorers-row' + (alignRight ? ' right' : '') + '">' + html + '</div>';
+      }).join("") + '</div>';
     }
 
     /* ── Rendu d'un match ── */
     function renderMatch(m) {
-      var homeTeam   = m.homeTeam || {};
-      var awayTeam   = m.awayTeam || {};
-      var score      = m.score || {};
-      var ft         = score.fullTime || {};
-      var competition= m.competition || {};
-
-      var status     = m.status || "SCHEDULED";
-      var isLive     = LIVE_STATUSES.indexOf(status) !== -1;
+      var homeTeam = m.homeTeam || {}, awayTeam = m.awayTeam || {};
+      var score = m.score || {}, ft = score.fullTime || {};
+      var comp = m.competition || {};
+      var status = m.status || "SCHEDULED";
+      var isLive = LIVE_STATUSES.indexOf(status) !== -1;
       var isFinished = FINISHED_STATUSES.indexOf(status) !== -1;
-      var isPaused   = status === "PAUSED";
+      var isPaused = status === "PAUSED";
+      var mid = String(m.id || "");
+      var matchDate = new Date(m.utcDate || Date.now());
+      var hName = homeTeam.name || homeTeam.shortName || "—";
+      var aName = awayTeam.name || awayTeam.shortName || "—";
+      var hScore = (isLive || isFinished) && ft.home !== null && ft.home !== undefined ? ft.home : (isLive ? "0" : "—");
+      var aScore = (isLive || isFinished) && ft.away !== null && ft.away !== undefined ? ft.away : (isLive ? "0" : "—");
 
-      var matchDate  = new Date(m.utcDate || Date.now());
-      var homeName   = esc(homeTeam.name || homeTeam.shortName || "—");
-      var awayName   = esc(awayTeam.name || awayTeam.shortName || "—");
-      var homeScore  = (isLive || isFinished) ? (ft.home !== null && ft.home !== undefined ? ft.home : "—") : "—";
-      var awayScore  = (isLive || isFinished) ? (ft.away !== null && ft.away !== undefined ? ft.away : "—") : "—";
+      /* Cotes dynamiques */
+      var odds = calcOdds(hName, aName);
+      var analysis = generateAnalysis(hName, aName, odds);
+      var favHome = odds.home < odds.away;
+      var favAway = odds.away < odds.home;
 
-      /* Temps affiché */
-      var timeLabel, timeClass = "";
-      if (isLive && !isPaused) { timeLabel = "🔴 En direct" + (m.minute ? " · " + m.minute + "'" : ""); timeClass = "live"; }
-      else if (isPaused)        { timeLabel = "⏸ Mi-temps";   timeClass = "live"; }
-      else if (isFinished)      { timeLabel = "Terminé";       timeClass = "finished"; }
-      else                      { timeLabel = fmtShort(matchDate) + " · " + fmt(matchDate); }
-
-      /* Logos — fallback sur les initiales si pas d'image */
-      function logoHtml(team) {
-        if (team.crest) return '<img src="' + esc(team.crest) + '" alt="' + esc(team.shortName || team.name || "") + '" onerror="this.style.display=\'none\'">';
-        return '<span style="font-size:13px;font-weight:700;color:var(--text-2)">' + esc((team.tla || team.shortName || "?").slice(0,3)) + '</span>';
+      /* Logos */
+      function logo(team) {
+        if (team.crest) return '<img src="' + esc(team.crest) + '" alt="' + esc(team.tla || "") + '" onerror="this.style.display=\'none\'">';
+        return '<span style="font-size:12px;font-weight:800;color:var(--text-2)">' + esc((team.tla || team.shortName || "?").slice(0,3).toUpperCase()) + '</span>';
       }
 
       /* Buteurs */
       var goals = m.goals || [];
-      var hSco  = buildScorerHtml(goals, homeTeam.id, false);
-      var aSco  = buildScorerHtml(goals, awayTeam.id, true);
+      var hSco = buildScorerHtml(goals, homeTeam.id);
+      var aSco = buildScorerHtml(goals, awayTeam.id);
 
-      /* Score central */
-      var scoreHtml = (isLive || isFinished)
-        ? '<div class="score-display"><span class="s">' + homeScore + '</span><span class="sep">—</span><span class="s">' + awayScore + '</span></div>'
-        : '<div class="score-pre">' + fmt(matchDate) + '</div>';
+      /* En-tête temps */
+      var timeLabel = isLive && !isPaused
+        ? ("🔴 En direct" + (m.minute ? " · " + m.minute + "'" : ""))
+        : isPaused ? "⏸ Mi-temps"
+        : isFinished ? "Terminé"
+        : (fmtShort(matchDate) + " · " + fmt(matchDate));
+      var timeClass = (isLive || isPaused) ? "live" : isFinished ? "finished" : "";
 
-      var minuteHtml = (isLive && !isPaused && m.minute)
-        ? '<span class="score-minute">⏱ ' + m.minute + "'</span>"
-        : (isPaused ? '<span class="score-minute" style="background:rgba(212,175,55,0.15);color:var(--gold)">⏸ Mi-temps</span>' : "");
+      /* Minuteur live avec ID pour mise à jour en temps réel */
+      var minuteHtml = isLive && !isPaused && m.minute
+        ? '<span class="score-minute" id="clock-' + mid + '">⏱ ' + m.minute + "'</span>"
+        : isPaused ? '<span class="score-minute" style="background:rgba(212,175,55,0.15);color:var(--gold)">⏸ Mi-temps</span>' : "";
 
-      /* Date badge matchs terminés */
+      /* Date badge terminés */
       var dateBadge = isFinished
-        ? '<div style="margin-bottom:14px"><span class="match-date-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' + esc(fmtFull(matchDate)) + ' · ' + fmt(matchDate) + '</span></div>'
+        ? '<div style="margin-bottom:14px"><span class="match-date-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> ' + esc(fmtFull(matchDate)) + ' · ' + fmt(matchDate) + '</span></div>'
         : "";
 
-      /* Stade */
-      var venue = (m.venue) ? '<span class="match-venue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>' + esc(m.venue) + '</span>' : '<span></span>';
+      /* Score */
+      var scoreHtml = (isLive || isFinished)
+        ? '<div class="score-display"><span class="s">' + hScore + '</span><span class="sep">—</span><span class="s">' + aScore + '</span></div>'
+        : '<div class="score-pre">' + fmt(matchDate) + '</div>';
 
-      /* Pronostic IA (uniquement matchs à venir / en direct) */
-      var predHtml = !isFinished
-        ? '<div class="match-pred"><div><div class="mp-label">Pronostic IA</div><div class="mp-val">' + AI_PRED.tip + '</div></div><div><div class="mp-label">Cote</div><div class="mp-val">' + AI_PRED.odds + '</div></div><div class="mp-conf">' + AI_PRED.conf + '% confiance</div><div class="mp-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>VIP</div></div>'
+      /* Cotes + analyse (seulement à venir et en direct) */
+      var predHtml = !isFinished ? (
+        '<div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">' +
+          '<div class="odds-3">' +
+            '<div class="odd-btn' + (favHome ? ' fav' : '') + '" onclick="window.eppToast(\'Cote ajoutée : ' + esc(hName) + ' gagne — ' + odds.home + '\')">' +
+              '<span class="od-label">1 — ' + esc(hName.split(" ")[0]) + '</span>' +
+              '<span class="od-val">' + odds.home + '</span>' +
+            '</div>' +
+            '<div class="odd-btn" onclick="window.eppToast(\'Cote ajoutée : Match nul — ' + odds.draw + '\')">' +
+              '<span class="od-label">Nul</span>' +
+              '<span class="od-val">' + odds.draw + '</span>' +
+            '</div>' +
+            '<div class="odd-btn' + (favAway ? ' fav' : '') + '" onclick="window.eppToast(\'Cote ajoutée : ' + esc(aName) + ' gagne — ' + odds.away + '\')">' +
+              '<span class="od-label">2 — ' + esc(aName.split(" ")[0]) + '</span>' +
+              '<span class="od-val">' + odds.away + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="conf-row">' +
+            '<span class="conf-label">Confiance IA</span>' +
+            '<div class="conf-bar"><div class="conf-fill" style="width:' + odds.conf + '%"></div></div>' +
+            '<span class="conf-pct">' + odds.conf + '%</span>' +
+          '</div>' +
+          '<div class="match-analysis">' +
+            '<div class="analysis-head"><span class="badge badge-vip" style="font-size:9px;padding:3px 8px">IA</span> Notre analyse</div>' +
+            '<p class="analysis-text">' + esc(analysis) + '</p>' +
+            '<a href="tarifs.html" class="analysis-lock">🔒 Analyse complète &amp; bankroll recommandée — Plan VIP</a>' +
+          '</div>' +
+        '</div>'
+      ) : "";
+
+      /* Stade */
+      var venue = m.venue
+        ? '<span class="match-venue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>' + esc(m.venue) + '</span>'
         : "";
 
       return '<div class="match-card' + (isLive ? ' live-card' : '') + '">' +
         '<div class="match-top">' +
-          '<span class="match-comp">⚽ ' + esc(competition.name || "Football") + '</span>' +
-          '<span class="match-time ' + timeClass + '">' + timeLabel + '</span>' +
+          '<span class="match-comp">⚽ ' + esc(comp.name || "Football") + '</span>' +
+          '<span class="match-time ' + timeClass + '" id="clocktop-' + mid + '">' + timeLabel + '</span>' +
         '</div>' +
         dateBadge +
         '<div class="match-body">' +
           '<div class="match-team home">' +
-            '<div class="team-logo">' + logoHtml(homeTeam) + '</div>' +
-            '<div><span class="team-name">' + homeName + '</span>' + hSco + '</div>' +
+            '<div class="team-logo">' + logo(homeTeam) + '</div>' +
+            '<div><span class="team-name">' + esc(hName) + '</span>' + hSco + '</div>' +
           '</div>' +
           '<div class="match-score-box">' + scoreHtml + minuteHtml + '</div>' +
           '<div class="match-team away">' +
-            '<div style="text-align:right"><span class="team-name">' + awayName + '</span>' + aSco + '</div>' +
-            '<div class="team-logo">' + logoHtml(awayTeam) + '</div>' +
+            '<div style="text-align:right"><span class="team-name">' + esc(aName) + '</span>' + aSco + '</div>' +
+            '<div class="team-logo">' + logo(awayTeam) + '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="match-footer">' + venue + predHtml + '</div>' +
+        (venue ? '<div class="match-footer">' + venue + '</div>' : '') +
+        predHtml +
       '</div>';
     }
 
-    /* ── Rendu de l'onglet ── */
+    /* ── Rendu onglet ── */
     function renderTab(tab) {
       currentTab = tab;
       var container = document.getElementById("matches-container");
@@ -693,24 +848,23 @@
       var matches = filterByTab(tab);
       if (!matches.length) {
         var msgs = {
-          live:     { ico: "📺", title: "Aucun match en direct",    sub: "Aucun match en cours. Consultez « À venir » ou « Terminés »." },
-          upcoming: { ico: "📅", title: "Aucun match à venir",      sub: "Pas de prochain match programmé pour ce championnat aujourd'hui." },
-          finished: { ico: "✅", title: "Aucun résultat disponible", sub: "Aucun match terminé pour cette journée." }
+          live:     { ico:"📺", title:"Aucun match en direct",     sub:"Aucun match en cours. Consultez « À venir » ou « Terminés »." },
+          upcoming: { ico:"📅", title:"Aucun match à venir",       sub:"Pas de prochain match programmé pour ce championnat aujourd'hui." },
+          finished: { ico:"✅", title:"Aucun résultat disponible", sub:"Aucun match terminé pour cette journée." }
         };
-        var m = msgs[tab] || msgs.live;
-        container.innerHTML = '<div class="state-empty"><div class="e-ico">' + m.ico + '</div><h3>' + m.title + '</h3><p>' + m.sub + '</p></div>';
+        var msg = msgs[tab] || msgs.live;
+        container.innerHTML = '<div class="state-empty"><div class="e-ico">' + msg.ico + '</div><h3>' + msg.title + '</h3><p>' + msg.sub + '</p></div>';
         return;
       }
       container.innerHTML = matches.map(renderMatch).join("");
+      startClockTick();
     }
 
     function showError(msg) {
-      var container = document.getElementById("matches-container");
-      if (!container) return;
+      var c = document.getElementById("matches-container"); if (!c) return;
       var extra = msg && msg.indexOf("FOOTBALL_DATA_KEY") !== -1
-        ? "<br><small style='color:var(--gold)'>⚠ Ajoutez la variable FOOTBALL_DATA_KEY dans les paramètres Netlify.</small>"
-        : "";
-      container.innerHTML = '<div class="state-empty"><div class="e-ico">⚡</div><h3>Données indisponibles</h3><p>Impossible de récupérer les matchs en temps réel.' + extra + '</p><br><button class="btn btn-ghost" onclick="fetchMatches(true)" style="margin:0 auto">Réessayer</button></div>';
+        ? "<br><small style='color:var(--gold)'>⚠ Ajoutez FOOTBALL_DATA_KEY dans les variables Netlify.</small>" : "";
+      c.innerHTML = '<div class="state-empty"><div class="e-ico">⚡</div><h3>Données indisponibles</h3><p>Impossible de récupérer les matchs.' + extra + '</p><br><button class="btn btn-ghost" onclick="fetchMatches(true)" style="margin:0 auto">Réessayer</button></div>';
     }
 
     /* ── Onglets ── */
