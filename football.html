@@ -247,6 +247,30 @@
     .stat-row .sr-r.gold { color: var(--gold); }
     .stat-row .sr-r.green { color: #34d399; }
 
+    /* Buteurs */
+    .scorers-row {
+      display: flex; flex-direction: column; gap: 3px;
+      margin-top: 6px;
+    }
+    .scorer-item {
+      font-size: 12px; color: var(--text-3);
+      display: flex; align-items: center; gap: 5px;
+    }
+    .scorer-item .goal-ico { font-size: 11px; }
+    .scorer-item .og { color: #f87171; }
+    .scorer-item .pen { color: var(--gold); }
+    .match-team.away .scorers-row { align-items: flex-end; }
+
+    /* Date match terminé */
+    .match-date-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(100,116,139,0.10); border: 1px solid var(--border);
+      border-radius: 8px; padding: 4px 10px;
+      font-family: var(--font-label); font-size: 11px; font-weight: 600;
+      color: var(--text-3); letter-spacing: .05em;
+    }
+    .match-date-badge svg { width: 12px; height: 12px; }
+
     /* Responsive */
     @media (max-width: 1024px) {
       .football-layout { grid-template-columns: 1fr; }
@@ -583,6 +607,53 @@
       });
     }
 
+    /* ── Extraction des buteurs depuis comp.details ── */
+    function extractScorers(comp, homeTeamId, awayTeamId) {
+      var details = comp.details || [];
+      var homeScorers = [];
+      var awayScorers = [];
+
+      details.forEach(function(d) {
+        var typeText = (d.type && d.type.text) ? d.type.text.toLowerCase() : "";
+        var isGoal = typeText.indexOf("goal") !== -1 || typeText.indexOf("penalty") !== -1;
+        if (!isGoal) return;
+
+        var player = "";
+        if (d.athletesInvolved && d.athletesInvolved.length > 0) {
+          player = d.athletesInvolved[0].displayName || d.athletesInvolved[0].shortName || "";
+        }
+        if (!player) return;
+
+        var minute = (d.clock && d.clock.displayValue) ? d.clock.displayValue + "'" : "";
+        var isOG = typeText.indexOf("own") !== -1;
+        var isPen = typeText.indexOf("penalty") !== -1;
+        var teamId = d.team && d.team.id ? d.team.id : "";
+
+        var entry = { player: player, minute: minute, isOG: isOG, isPen: isPen };
+
+        if (teamId === homeTeamId || (!teamId && homeScorers.length <= awayScorers.length)) {
+          homeScorers.push(entry);
+        } else {
+          awayScorers.push(entry);
+        }
+      });
+
+      return { home: homeScorers, away: awayScorers };
+    }
+
+    function buildScorerHtml(scorers) {
+      if (!scorers || scorers.length === 0) return "";
+      return '<div class="scorers-row">' +
+        scorers.map(function(s) {
+          var cls = s.isOG ? " og" : (s.isPen ? " pen" : "");
+          var ico = s.isOG ? "⚽(csc)" : (s.isPen ? "⚽(p)" : "⚽");
+          return '<span class="scorer-item"><span class="goal-ico' + cls + '">' + ico + '</span>' +
+            escHtml(s.player) + (s.minute ? ' <span style="color:var(--text-3);font-size:10px">' + s.minute + '</span>' : '') +
+          '</span>';
+        }).join("") +
+      '</div>';
+    }
+
     /* ── Rendu HTML d'un match ── */
     function renderMatch(event) {
       var comp = event.competitions && event.competitions[0];
@@ -604,8 +675,15 @@
       var awayName = escHtml(awayTeam.displayName || awayTeam.name || "Équipe B");
 
       var matchDate = new Date(event.date || Date.now());
-      var timeStr = isLive ? "En direct" : (isFinished ? "Terminé" : fmtDate(matchDate) + " · " + fmt(matchDate));
+      var timeStr = isLive ? "En direct" : (isFinished ? "Terminé · " + fmtDate(matchDate) : fmtDate(matchDate) + " · " + fmt(matchDate));
       var timeClass = isLive ? "live" : (isFinished ? "finished" : "");
+
+      /* Buteurs */
+      var scorers = (isLive || isFinished)
+        ? extractScorers(comp, homeTeam.id, awayTeam.id)
+        : { home: [], away: [] };
+      var homeScorersHtml = buildScorerHtml(scorers.home);
+      var awayScorersHtml = buildScorerHtml(scorers.away);
 
       var minuteHtml = "";
       if (isLive && event.status && event.status.displayClock) {
@@ -615,6 +693,13 @@
       var scoreHtml = isLive || isFinished
         ? '<div class="score-display"><span class="s">' + homeScore + '</span><span class="sep">—</span><span class="s">' + awayScore + '</span></div>'
         : '<div class="score-pre">À venir</div>';
+
+      /* Date badge pour matchs terminés */
+      var dateBadgeHtml = "";
+      if (isFinished) {
+        var fullDate = matchDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        dateBadgeHtml = '<span class="match-date-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' + escHtml(fullDate) + ' · ' + fmt(matchDate) + '</span>';
+      }
 
       var venue = (comp.venue && comp.venue.fullName) ? escHtml(comp.venue.fullName) : "";
       var venueHtml = venue ? '<span class="match-venue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>' + venue + '</span>' : '<span></span>';
@@ -636,14 +721,15 @@
           '<span class="match-comp">⚽ ' + escHtml(event.name || "Football") + '</span>' +
           '<span class="match-time ' + timeClass + '">' + timeStr + '</span>' +
         '</div>' +
+        (isFinished && dateBadgeHtml ? '<div style="margin-bottom:14px">' + dateBadgeHtml + '</div>' : '') +
         '<div class="match-body">' +
           '<div class="match-team home">' +
             '<div class="team-logo">' + logoHome + '</div>' +
-            '<span class="team-name">' + homeName + '</span>' +
+            '<div><span class="team-name">' + homeName + '</span>' + homeScorersHtml + '</div>' +
           '</div>' +
           '<div class="match-score-box">' + scoreHtml + minuteHtml + '</div>' +
           '<div class="match-team away">' +
-            '<span class="team-name">' + awayName + '</span>' +
+            '<div style="text-align:right"><span class="team-name">' + awayName + '</span>' + awayScorersHtml + '</div>' +
             '<div class="team-logo">' + logoAway + '</div>' +
           '</div>' +
         '</div>' +
