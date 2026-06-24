@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
-import { PLANS, monthlyEquiv } from '@/constants/subscriptionPlans';
+import { PLANS, monthlyEquiv, formatPrice } from '@/constants/subscriptionPlans';
 import { COLORS, GRADIENTS } from '@/constants/theme';
 import { GrowButton } from '@/components/ui/GrowButton';
 import { BillingPeriod } from '@/types';
@@ -28,16 +28,20 @@ export default function PaywallScreen() {
 
   const paidPlans = PLANS.filter((p) => p.tier !== 'free');
 
-  const handleUpgrade = async (planTier: string, priceId: string) => {
+  const handleUpgrade = async (planTier: string, priceKey: string) => {
     if (!user) return;
-    if (!priceId) {
+    if (!priceKey) {
       Alert.alert('Bientôt disponible', 'Le paiement en ligne sera disponible très prochainement !');
       return;
     }
     setLoadingPlan(planTier);
     try {
-      const method = selectedPayment === 'card' ? 'stripe' : 'paydunya';
-      await startCheckout(priceId, user.id, profile?.email ?? user.email ?? '', method);
+      await startCheckout(
+        priceKey,
+        user.id,
+        profile?.email ?? user.email ?? '',
+        profile?.full_name,
+      );
     } catch (e: any) {
       Alert.alert('Erreur', e.message ?? 'Impossible de démarrer le paiement.');
     } finally {
@@ -91,8 +95,8 @@ export default function PaywallScreen() {
 
         {/* Plan cards */}
         {paidPlans.map((plan) => {
-          const priceId = billing === 'monthly' ? plan.stripe_price_monthly : plan.stripe_price_yearly;
-          const priceCents = billing === 'monthly' ? plan.price_monthly_cents : plan.price_yearly_cents;
+          const priceKey = billing === 'monthly' ? plan.price_key_monthly : plan.price_key_yearly;
+          const priceFcfa = billing === 'monthly' ? plan.price_fcfa_monthly : plan.price_fcfa_yearly;
           const isCurrentPlan = currentTier === plan.tier;
           const isElite = plan.tier === 'elite';
 
@@ -117,15 +121,17 @@ export default function PaywallScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.planName, { color: plan.color }]}>{plan.name}</Text>
-                  {billing === 'yearly' && priceCents > 0 && (
-                    <Text style={styles.monthlyEquiv}>soit {monthlyEquiv(priceCents)}</Text>
+                  {billing === 'yearly' && priceFcfa > 0 && (
+                    <Text style={styles.monthlyEquiv}>soit {monthlyEquiv(priceFcfa)}</Text>
                   )}
                 </View>
                 <View style={styles.priceBlock}>
                   <Text style={[styles.priceAmount, { color: plan.color }]}>
-                    {(priceCents / 100).toFixed(2).replace('.', ',')}€
+                    {priceFcfa > 0 ? priceFcfa.toLocaleString('fr-CI') : 'Gratuit'}
                   </Text>
-                  <Text style={styles.pricePer}>/{billing === 'monthly' ? 'mois' : 'an'}</Text>
+                  {priceFcfa > 0 && (
+                    <Text style={styles.pricePer}>FCFA/{billing === 'monthly' ? 'mois' : 'an'}</Text>
+                  )}
                 </View>
               </View>
 
@@ -145,7 +151,7 @@ export default function PaywallScreen() {
               ) : (
                 <GrowButton
                   title={loadingPlan === plan.tier ? 'Chargement...' : `Commencer l'essai gratuit`}
-                  onPress={() => handleUpgrade(plan.tier, priceId)}
+                  onPress={() => handleUpgrade(plan.tier, priceKey)}
                   isLoading={loadingPlan === plan.tier}
                   variant={isElite ? 'accent' : 'primary'}
                   style={{ marginTop: 16 }}
@@ -215,8 +221,9 @@ export default function PaywallScreen() {
         </TouchableOpacity>
 
         <Text style={styles.legal}>
-          Paiement 100% sécurisé via Stripe. Renouvellement automatique.{'\n'}
-          Annulable à tout moment depuis ton profil.
+          Paiement 100% sécurisé via CinetPay.{'\n'}
+          Wave · Orange Money · Moov Money · Carte bancaire{'\n'}
+          Renouvellement automatique. Annulable à tout moment.
         </Text>
       </ScrollView>
     </View>

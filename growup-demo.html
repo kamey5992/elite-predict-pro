@@ -301,7 +301,7 @@
       <div style="text-align:center;padding:8px 16px 0">
         <button onclick="closePaywall()" style="background:none;border:none;color:var(--dim);font-size:13px;cursor:pointer;text-decoration:underline">Rester sur le plan gratuit</button>
       </div>
-      <div style="text-align:center;color:var(--dim);font-size:10px;padding:12px 24px 0;line-height:1.5">Paiement sécurisé via Stripe · Renouvellement automatique · Annulable à tout moment</div>
+      <div style="text-align:center;color:var(--dim);font-size:10px;padding:12px 24px 0;line-height:1.5">Paiement sécurisé via CinetPay · Wave · Orange Money · Moov Money · Carte bancaire<br>Renouvellement automatique · Annulable à tout moment</div>
     </div>
   </div>
 
@@ -619,6 +619,8 @@ let state = {
   completedDays: new Set(['d1','d2','d3','gu-d1','gu-d2']),
   completedChallenges: new Set(),
   totalXP: 1240,
+  userEmail: '',
+  userId: '',
 };
 
 const DATA = {
@@ -791,6 +793,7 @@ async function login() {
       throw error;
     }
     state.userEmail = email;
+    state.userId = data?.user?.id || '';
     const name = data?.user?.user_metadata?.full_name || email.split('@')[0];
     enterApp(name);
   } catch(e) {
@@ -1115,26 +1118,38 @@ function setPwBilling(b){
   document.getElementById('pw-btn-monthly').className='pw-b-btn'+(b==='monthly'?' active':'');
   document.getElementById('pw-btn-yearly').className='pw-b-btn'+(b==='yearly'?' active':'');
   if(b==='monthly'){
-    document.getElementById('pw-pro-price').textContent='4,99€';
-    document.getElementById('pw-pro-per').textContent='/mois';
+    document.getElementById('pw-pro-price').textContent='3 000';
+    document.getElementById('pw-pro-per').textContent='FCFA/mois';
     document.getElementById('pw-pro-monthly').textContent='';
-    document.getElementById('pw-elite-price').textContent='8,99€';
-    document.getElementById('pw-elite-per').textContent='/mois';
+    document.getElementById('pw-elite-price').textContent='5 000';
+    document.getElementById('pw-elite-per').textContent='FCFA/mois';
     document.getElementById('pw-elite-monthly').textContent='';
   } else {
-    document.getElementById('pw-pro-price').textContent='29,99€';
-    document.getElementById('pw-pro-per').textContent='/an';
-    document.getElementById('pw-pro-monthly').textContent='soit 2,50€/mois';
-    document.getElementById('pw-elite-price').textContent='49,99€';
-    document.getElementById('pw-elite-per').textContent='/an';
-    document.getElementById('pw-elite-monthly').textContent='soit 4,16€/mois';
+    document.getElementById('pw-pro-price').textContent='18 000';
+    document.getElementById('pw-pro-per').textContent='FCFA/an';
+    document.getElementById('pw-pro-monthly').textContent='soit 1 500 FCFA/mois';
+    document.getElementById('pw-elite-price').textContent='30 000';
+    document.getElementById('pw-elite-per').textContent='FCFA/an';
+    document.getElementById('pw-elite-monthly').textContent='soit 2 500 FCFA/mois';
   }
 }
-function pwUpgrade(plan, method){
+async function pwUpgrade(plan, method){
+  if(!state.userEmail){ showToast('Connecte-toi pour t\'abonner'); return; }
   closePaywall();
-  const methods={wave:'Wave',orange:'Orange Money',moov:'Moov Money',card:'Carte bancaire'};
-  const mLabel=methods[method]||'';
-  showToast(`🔐 ${mLabel} — Paiement bientôt disponible !`);
+  const priceKey = plan + '_' + pwBilling;
+  showToast('⏳ Ouverture du paiement CinetPay...');
+  try {
+    const res = await fetch('/.netlify/functions/growup-cinetpay-checkout', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ priceKey, userId: state.userId, userEmail: state.userEmail })
+    });
+    const data = await res.json();
+    if(data.url) window.location.href = data.url;
+    else showToast('❌ Erreur paiement: ' + (data.error||'inconnue'));
+  } catch(e) {
+    showToast('❌ Erreur réseau');
+  }
 }
 
 // ─── Toast ────────────────────────────────
@@ -1151,6 +1166,7 @@ window.onload = async () => {
   const { data: { session } } = await sb.auth.getSession();
   if (session?.user) {
     state.userEmail = session.user.email;
+    state.userId = session.user.id;
     const name = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
     enterApp(name);
   }

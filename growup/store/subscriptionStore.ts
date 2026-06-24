@@ -10,7 +10,7 @@ interface SubscriptionState {
   isLoading: boolean;
   tier: SubscriptionTier;
   fetchSubscription: (userId: string) => Promise<void>;
-  startCheckout: (priceId: string, userId: string, userEmail: string, paymentMethod?: string) => Promise<void>;
+  startCheckout: (priceKey: string, userId: string, userEmail: string, userName?: string) => Promise<void>;
   canAccess: (feature: 'full_program' | 'progress_tracking' | 'photos' | 'unlimited_photos' | 'percentile') => boolean;
   reset: () => void;
 }
@@ -42,13 +42,13 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     }
   },
 
-  startCheckout: async (priceId: string, userId: string, userEmail: string, paymentMethod = 'stripe') => {
+  startCheckout: async (priceKey: string, userId: string, userEmail: string, userName?: string) => {
     const res = await fetch(
-      `${NETLIFY_URL}/.netlify/functions/growup-stripe-checkout`,
+      `${NETLIFY_URL}/.netlify/functions/growup-cinetpay-checkout`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId, userId, userEmail, paymentMethod }),
+        body: JSON.stringify({ priceKey, userId, userEmail, userName }),
       }
     );
     if (!res.ok) throw new Error('Impossible de démarrer le paiement.');

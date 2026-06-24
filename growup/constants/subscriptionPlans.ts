@@ -5,10 +5,10 @@ export interface Plan {
   name: string;
   emoji: string;
   color: string;
-  price_monthly_cents: number;
-  price_yearly_cents: number;
-  stripe_price_monthly: string;
-  stripe_price_yearly: string;
+  price_fcfa_monthly: number;
+  price_fcfa_yearly: number;
+  price_key_monthly: string;
+  price_key_yearly: string;
   features: string[];
   not_included: string[];
   badge?: string;
@@ -20,10 +20,10 @@ export const PLANS: Plan[] = [
     name: 'Gratuit',
     emoji: '🌱',
     color: '#6B7280',
-    price_monthly_cents: 0,
-    price_yearly_cents: 0,
-    stripe_price_monthly: '',
-    stripe_price_yearly: '',
+    price_fcfa_monthly: 0,
+    price_fcfa_yearly: 0,
+    price_key_monthly: '',
+    price_key_yearly: '',
     features: [
       'Niveau 1, Jour 1 uniquement',
       'Profil de base',
@@ -41,10 +41,10 @@ export const PLANS: Plan[] = [
     name: 'GrowUp Pro',
     emoji: '⚡',
     color: '#7C3AED',
-    price_monthly_cents: 499,
-    price_yearly_cents: 2999,
-    stripe_price_monthly: process.env.EXPO_PUBLIC_STRIPE_PRICE_PRO_MONTHLY ?? '',
-    stripe_price_yearly: process.env.EXPO_PUBLIC_STRIPE_PRICE_PRO_YEARLY ?? '',
+    price_fcfa_monthly: 3000,
+    price_fcfa_yearly: 18000,
+    price_key_monthly: 'pro_monthly',
+    price_key_yearly: 'pro_yearly',
     features: [
       'Tous les niveaux des 2 modes',
       'Suivi des mesures & historique',
@@ -62,10 +62,10 @@ export const PLANS: Plan[] = [
     name: 'GrowUp Elite',
     emoji: '👑',
     color: '#F59E0B',
-    price_monthly_cents: 899,
-    price_yearly_cents: 4999,
-    stripe_price_monthly: process.env.EXPO_PUBLIC_STRIPE_PRICE_ELITE_MONTHLY ?? '',
-    stripe_price_yearly: process.env.EXPO_PUBLIC_STRIPE_PRICE_ELITE_YEARLY ?? '',
+    price_fcfa_monthly: 5000,
+    price_fcfa_yearly: 30000,
+    price_key_monthly: 'elite_monthly',
+    price_key_yearly: 'elite_yearly',
     badge: 'POPULAIRE',
     features: [
       'Tout ce qui est dans Pro',
@@ -82,12 +82,12 @@ export function getPlanByTier(tier: SubscriptionTier): Plan {
   return PLANS.find((p) => p.tier === tier) ?? PLANS[0];
 }
 
-export function formatPrice(cents: number, period: BillingPeriod): string {
-  if (cents === 0) return 'Gratuit';
-  const euros = (cents / 100).toFixed(2).replace('.', ',');
-  return period === 'monthly' ? `${euros}€/mois` : `${euros}€/an`;
+export function formatPrice(fcfa: number, period: BillingPeriod): string {
+  if (fcfa === 0) return 'Gratuit';
+  const formatted = fcfa.toLocaleString('fr-CI');
+  return period === 'monthly' ? `${formatted} FCFA/mois` : `${formatted} FCFA/an`;
 }
 
-export function monthlyEquiv(yearlyCents: number): string {
-  return ((yearlyCents / 100) / 12).toFixed(2).replace('.', ',') + '€/mois';
+export function monthlyEquiv(yearlyFcfa: number): string {
+  return Math.round(yearlyFcfa / 12).toLocaleString('fr-CI') + ' FCFA/mois';
 }
