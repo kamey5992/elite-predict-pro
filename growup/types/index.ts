@@ -130,3 +130,22 @@ export interface WorldPercentile {
 }
 
 export type Gender = 'male' | 'female' | 'other';
+
+export type SubscriptionTier = 'free' | 'pro' | 'elite';
+export type BillingPeriod = 'monthly' | 'yearly';
+export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing';
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  tier: SubscriptionTier;
+  billing_period: BillingPeriod | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  status: SubscriptionStatus;
+  created_at: string;
+  updated_at: string;
+}

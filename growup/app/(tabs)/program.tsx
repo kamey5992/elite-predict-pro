@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import { useProgramStore } from '@/store/programStore';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { COLORS, GRADIENTS, RANKS } from '@/constants/theme';
 import { GradientCard } from '@/components/ui/GradientCard';
 import { XPBar } from '@/components/ui/XPBar';
@@ -20,6 +21,7 @@ const { width } = Dimensions.get('window');
 export default function ProgramScreen() {
   const { profile } = useAuthStore();
   const { levels, activeMode, isLoading, loadProgram, loadCompletedDays, setCurrentDay, setActiveMode, isDayCompleted } = useProgramStore();
+  const { canAccess } = useSubscriptionStore();
   const [refreshing, setRefreshing] = useState(false);
   const [expandedLevel, setExpandedLevel] = useState<string | null>(null);
 
@@ -43,7 +45,12 @@ export default function ProgramScreen() {
     setExpandedLevel(null);
   };
 
-  const handleDayPress = (day: any) => {
+  const handleDayPress = (day: any, levelNumber: number) => {
+    const isFreeDay = levelNumber === 1 && day.day_number === 1;
+    if (!isFreeDay && !canAccess('full_program')) {
+      router.push('/paywall');
+      return;
+    }
     setCurrentDay(day);
     router.push(`/workout/${day.id}`);
   };
@@ -142,14 +149,16 @@ export default function ProgramScreen() {
           const isExpanded = expandedLevel === level.id;
           const completedInLevel = level.days.filter((d) => isDayCompleted(d.id)).length;
           const levelProgress = completedInLevel / level.days.length;
-          const isLocked = (profile?.xp ?? 0) < level.unlock_xp;
+          const isXpLocked = (profile?.xp ?? 0) < level.unlock_xp;
+          const isSubLocked = level.level_number > 1 && !canAccess('full_program');
+          const isLocked = isXpLocked || isSubLocked;
 
           return (
             <View key={level.id} style={styles.levelSection}>
               <TouchableOpacity
                 style={[styles.levelHeader, isLocked && styles.levelHeaderLocked]}
-                onPress={() => !isLocked && setExpandedLevel(isExpanded ? null : level.id)}
-                activeOpacity={isLocked ? 1 : 0.8}
+                onPress={() => isSubLocked ? router.push('/paywall') : (!isXpLocked && setExpandedLevel(isExpanded ? null : level.id))}
+                activeOpacity={0.8}
               >
                 <LinearGradient
                   colors={isLocked ? (['#1E1E40', '#12122A'] as const) : (activeMode === 'grandir' ? GRADIENTS.grandir : GRADIENTS.glowup)}
@@ -176,6 +185,11 @@ export default function ProgramScreen() {
                         </View>
                       </View>
                     )}
+                    {isSubLocked && (
+                      <View style={styles.levelMeta}>
+                        <Text style={styles.levelLockHint}>🔐 Passer à Pro</Text>
+                      </View>
+                    )}
                   </View>
                   {!isLocked && (
                     <Ionicons
@@ -196,7 +210,7 @@ export default function ProgramScreen() {
                       isCompleted={isDayCompleted(day.id)}
                       isLocked={false}
                       mode={activeMode}
-                      onPress={() => handleDayPress(day)}
+                      onPress={() => handleDayPress(day, level.level_number)}
                     />
                   ))}
                 </View>

@@ -264,6 +264,32 @@ create policy "Users manage own challenges"
   using (auth.uid() = user_id);
 
 -- =============================================
+-- SUBSCRIPTIONS
+-- =============================================
+create table public.subscriptions (
+  id                      uuid primary key default uuid_generate_v4(),
+  user_id                 uuid references auth.users on delete cascade unique,
+  tier                    text not null default 'free' check (tier in ('free','pro','elite')),
+  billing_period          text check (billing_period in ('monthly','yearly')),
+  stripe_customer_id      text unique,
+  stripe_subscription_id  text unique,
+  current_period_start    timestamptz,
+  current_period_end      timestamptz,
+  cancel_at_period_end    boolean not null default false,
+  status                  text not null default 'active' check (status in ('active','canceled','past_due','trialing')),
+  created_at              timestamptz not null default now(),
+  updated_at              timestamptz not null default now()
+);
+
+alter table public.subscriptions enable row level security;
+
+create policy "Users read own subscription"
+  on public.subscriptions for select
+  using (auth.uid() = user_id);
+
+-- Service role (Netlify webhook) bypasses RLS to upsert subscriptions.
+
+-- =============================================
 -- SEED: PROGRAM LEVELS
 -- =============================================
 insert into public.program_levels (level_number, title, description, program_mode, unlock_xp, badge_icon) values

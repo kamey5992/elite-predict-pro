@@ -9,6 +9,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { getPlanByTier } from '@/constants/subscriptionPlans';
 import { COLORS, GRADIENTS, RANKS, XP_PER_LEVEL } from '@/constants/theme';
 import { GradientCard } from '@/components/ui/GradientCard';
 import { XPBar } from '@/components/ui/XPBar';
@@ -17,6 +19,8 @@ import { GrowButton } from '@/components/ui/GrowButton';
 
 export default function ProfileScreen() {
   const { profile, signOut, updateProfile } = useAuthStore();
+  const { tier } = useSubscriptionStore();
+  const currentPlan = getPlanByTier(tier);
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [heightCm, setHeightCm] = useState(String(profile?.height_cm ?? ''));
@@ -134,6 +138,35 @@ export default function ProfileScreen() {
           )}
         </GradientCard>
 
+        {/* Subscription card */}
+        <TouchableOpacity
+          style={[styles.subCard, { borderColor: currentPlan.color + '60' }]}
+          onPress={() => tier === 'free' && router.push('/paywall')}
+          activeOpacity={tier === 'free' ? 0.7 : 1}
+        >
+          <LinearGradient
+            colors={[currentPlan.color + '20', 'transparent']}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={styles.subRow}>
+            <Text style={styles.subEmoji}>{currentPlan.emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.subName, { color: currentPlan.color }]}>{currentPlan.name}</Text>
+              <Text style={styles.subDesc}>
+                {tier === 'free' ? 'Accès limité · Appuie pour upgrader' : 'Abonnement actif'}
+              </Text>
+            </View>
+            {tier === 'free' && (
+              <View style={[styles.upgradeBtn, { backgroundColor: currentPlan.color }]}>
+                <Text style={styles.upgradeBtnText}>Upgrade</Text>
+              </View>
+            )}
+            {tier !== 'free' && (
+              <Ionicons name="shield-checkmark" size={22} color={currentPlan.color} />
+            )}
+          </View>
+        </TouchableOpacity>
+
         {/* Streak */}
         <GradientCard style={styles.streakCard}>
           <View style={styles.streakRow}>
@@ -246,6 +279,13 @@ const styles = StyleSheet.create({
   xpStatLabel: { color: COLORS.textDim, fontSize: 11, marginTop: 2, textAlign: 'center' },
   xpDivider: { width: 1, height: 32, backgroundColor: COLORS.border },
   nextRankHint: { color: COLORS.textMuted, fontSize: 12, textAlign: 'center', marginTop: 12 },
+  subCard: { marginHorizontal: 20, marginBottom: 14, borderRadius: 16, borderWidth: 1, padding: 16, overflow: 'hidden' },
+  subRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  subEmoji: { fontSize: 28 },
+  subName: { fontSize: 16, fontWeight: '800' },
+  subDesc: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
+  upgradeBtn: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
+  upgradeBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   streakCard: { marginHorizontal: 20, marginBottom: 20 },
   streakRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   streakTitle: { color: COLORS.textMuted, fontSize: 13, marginBottom: 4 },
