@@ -197,6 +197,7 @@
   .pw-popular{position:absolute;top:10px;right:10px;background:#F59E0B;color:#000;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:900}
   .locked-lock{font-size:13px;color:var(--dim);background:rgba(124,58,237,.15);border-radius:6px;padding:2px 8px;font-weight:700;display:inline-block;margin-top:3px}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
 <div id="app">
@@ -477,8 +478,8 @@
           💪
           <div style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:13px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid var(--bg)">📷</div>
         </div>
-        <div style="font-size:22px;font-weight:800">Alex Martin</div>
-        <div style="color:var(--muted);font-size:14px">alex@growup.app</div>
+        <div style="font-size:22px;font-weight:800" id="profile-name">Alex Martin</div>
+        <div style="color:var(--muted);font-size:14px" id="profile-email">alex@growup.app</div>
         <div style="background:rgba(124,58,237,.2);padding:7px 16px;border-radius:20px;display:flex;align-items:center;gap:6px">
           <span>⚡</span><span style="color:var(--primaryL);font-size:14px;font-weight:700">Apprenti</span>
         </div>
@@ -597,6 +598,13 @@
 </div>
 
 <script>
+// ─── Supabase ────────────────────────────
+const { createClient } = supabase;
+const sb = createClient(
+  'https://xwewqtrtnxqlcwxaovsp.supabase.co',
+  'sb_publishable_XOtpmXDXy9M7vZXjVUEqjA__H9CWw8L'
+);
+
 // ─── State ──────────────────────────────
 let state = {
   screen: 'login',
@@ -737,17 +745,67 @@ function goBack() {
 function goToMain() { showScreen('main'); state.screen='main'; }
 
 // ─── Auth ────────────────────────────────
-function login() {
+function enterApp(name) {
+  const displayName = name || 'Utilisateur';
+  // Update greeting with real name
+  const greetEl = document.querySelector('#tab-programme .scroll-content > div:first-child div div:first-child');
+  if (greetEl) greetEl.textContent = `Bonjour ${displayName.split(' ')[0]} 👋`;
+  // Update profile name
+  const profileNameEl = document.getElementById('profile-name');
+  if (profileNameEl) profileNameEl.textContent = displayName;
+  const profileEmailEl = document.getElementById('profile-email');
+  if (profileEmailEl) profileEmailEl.textContent = state.userEmail || '';
+
   showScreen('main');
-  state.screen='main';
+  state.screen = 'main';
   renderLevels();
   renderChart();
   renderChallenges();
   renderAchievements();
   renderHeightHistory();
-  document.getElementById('today-date').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('today-date').textContent =
+    new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
 }
-function logout() { showScreen('login'); state.screen='login'; }
+
+async function login() {
+  const email = document.getElementById('inp-email').value.trim();
+  const pass  = document.getElementById('inp-pass').value;
+  const btn   = document.querySelector('#screen-login .btn-primary');
+
+  // Demo mode — no credentials needed
+  if (!email && !pass) { enterApp('Alex Demo'); return; }
+
+  btn.textContent = 'Connexion…'; btn.disabled = true;
+  try {
+    // Try sign in first
+    let { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error && error.message.includes('Invalid')) {
+      // Account doesn't exist → create it
+      const res = await sb.auth.signUp({ email, password: pass,
+        options: { data: { full_name: email.split('@')[0] } }
+      });
+      if (res.error) throw res.error;
+      data = res.data;
+      showToast('🎉 Compte créé avec succès !');
+    } else if (error) {
+      throw error;
+    }
+    state.userEmail = email;
+    const name = data?.user?.user_metadata?.full_name || email.split('@')[0];
+    enterApp(name);
+  } catch(e) {
+    showToast('❌ ' + (e.message || 'Erreur de connexion'));
+    btn.textContent = 'Se connecter'; btn.disabled = false;
+  }
+}
+
+async function logout() {
+  await sb.auth.signOut().catch(()=>{});
+  showScreen('login');
+  state.screen = 'login';
+  document.getElementById('inp-email').value = '';
+  document.getElementById('inp-pass').value = '';
+}
 
 // ─── Tabs ────────────────────────────────
 function switchTab(tab) {
@@ -1087,8 +1145,15 @@ function showToast(msg){
 }
 
 // ─── Init ─────────────────────────────────
-window.onload=()=>{
+window.onload = async () => {
   setTimeout(()=>document.getElementById('xp-fill').style.width='48%',300);
+  // Restore session if user was already logged in
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    state.userEmail = session.user.email;
+    const name = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+    enterApp(name);
+  }
 };
 </script>
 </body>
