@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GrowUp — Demo</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  :root{
+    --bg:#0A0A1A;--surface:#12122A;--surfaceL:#1E1E40;--border:#2A2A5A;
+    --text:#F0F0FF;--muted:#8888B8;--dim:#606098;
+    --primary:#7C3AED;--primaryL:#A78BFA;--accent:#EC4899;
+    --success:#22C55E;--gold:#F59E0B;--error:#EF4444;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
+  #app{height:100%;display:flex;flex-direction:column;max-width:430px;margin:0 auto;position:relative;overflow:hidden}
+
+  /* ── Screens ── */
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);z-index:1}
+  .screen.active{transform:translateX(0)}
+  .screen.behind{transform:translateX(-30%)}
+
+  /* ── Gradient util ── */
+  .grad-primary{background:linear-gradient(135deg,#7C3AED,#EC4899)}
+  .grad-grandir{background:linear-gradient(135deg,#5B21B6,#7C3AED)}
+  .grad-glowup{background:linear-gradient(135deg,#BE185D,#EC4899)}
+  .grad-gold{background:linear-gradient(135deg,#D97706,#F59E0B)}
+  .grad-success{background:linear-gradient(135deg,#16A34A,#22C55E)}
+  .grad-dark{background:linear-gradient(180deg,#0A0A1A,#12122A)}
+
+  /* ── Cards ── */
+  .card{background:var(--surface);border-radius:16px;padding:16px;border:1px solid var(--border);margin-bottom:12px}
+  .card.gradient-border{border-color:transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,linear-gradient(135deg,#7C3AED,#EC4899) border-box}
+
+  /* ── Scroll content ── */
+  .scroll-content{flex:1;overflow-y:auto;padding:20px;padding-top:56px;padding-bottom:90px;-webkit-overflow-scrolling:touch}
+  .scroll-content::-webkit-scrollbar{display:none}
+
+  /* ── Header bar ── */
+  .top-bar{position:absolute;top:0;left:0;right:0;z-index:10;height:52px;display:flex;align-items:center;padding:0 16px;gap:12px;background:linear-gradient(var(--bg) 80%,transparent)}
+
+  /* ── Bottom tabs ── */
+  #tabs{position:absolute;bottom:0;left:0;right:0;height:72px;background:rgba(18,18,42,.95);border-top:1px solid var(--border);display:flex;backdrop-filter:blur(20px);z-index:100}
+  .tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;cursor:pointer;transition:all .2s}
+  .tab-btn .tab-icon{font-size:22px;transition:.2s}
+  .tab-btn .tab-label{font-size:10px;color:var(--dim);font-weight:600;transition:.2s}
+  .tab-btn.active .tab-label{color:var(--primaryL)}
+  .tab-btn.active::before{content:'';position:absolute;top:0;width:40%;height:2px;background:linear-gradient(90deg,#7C3AED,#EC4899);border-radius:0 0 2px 2px}
+  .tab-btn{position:relative}
+
+  /* ── XP Bar ── */
+  .xp-bar-track{height:8px;background:var(--surfaceL);border-radius:4px;overflow:hidden}
+  .xp-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#7C3AED,#EC4899);transition:width 1s cubic-bezier(.4,0,.2,1)}
+
+  /* ── Streak badge ── */
+  .streak-badge{width:52px;height:52px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#F59E0B,#EF4444);box-shadow:0 4px 16px rgba(245,158,11,.4);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+  /* ── Buttons ── */
+  .btn{border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;padding:14px 24px;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
+  .btn:active{transform:scale(.97)}
+  .btn-primary{background:linear-gradient(90deg,#7C3AED,#EC4899);color:#fff}
+  .btn-grandir{background:linear-gradient(90deg,#5B21B6,#7C3AED);color:#fff}
+  .btn-glowup{background:linear-gradient(90deg,#BE185D,#EC4899);color:#fff}
+  .btn-success{background:linear-gradient(90deg,#16A34A,#22C55E);color:#fff}
+  .btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primaryL)}
+  .btn-ghost{background:transparent;color:var(--muted)}
+
+  /* ── Inputs ── */
+  .input-wrap{display:flex;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0 14px;transition:.2s}
+  .input-wrap:focus-within{border-color:var(--primary)}
+  .input-wrap input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:15px;padding:14px 0}
+  .input-wrap .ico{margin-right:10px;font-size:18px;color:var(--dim)}
+
+  /* ── Tags ── */
+  .tag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700}
+  .tag-easy{background:rgba(34,197,94,.15);color:#22C55E}
+  .tag-medium{background:rgba(245,158,11,.15);color:#F59E0B}
+  .tag-hard{background:rgba(239,68,68,.15);color:#EF4444}
+
+  /* ── Workout timer ── */
+  .timer-circle{width:200px;height:200px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#5B21B6,#7C3AED);box-shadow:0 8px 32px rgba(124,58,237,.5);margin:0 auto 24px}
+  .timer-num{font-size:52px;font-weight:900;color:#fff;letter-spacing:-2px;line-height:1}
+  .timer-label{font-size:13px;color:rgba(255,255,255,.7);font-weight:600;margin-top:4px}
+
+  /* ── Progress chips ── */
+  .ex-chips{display:flex;gap:4px;flex-wrap:wrap}
+  .ex-chip{height:4px;border-radius:2px;background:var(--border);flex:1;transition:.3s}
+  .ex-chip.done{background:var(--success)}
+  .ex-chip.active{background:var(--primary);flex:2}
+
+  /* ── Day card ── */
+  .day-card{display:flex;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px;cursor:pointer;transition:.2s;gap:0}
+  .day-card:active{transform:scale(.98)}
+  .day-card.done{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.06)}
+  .day-card .accent{width:4px;align-self:stretch}
+  .day-card .day-num{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;margin:10px 12px;flex-shrink:0}
+  .day-card .day-info{flex:1;padding:12px 0}
+  .day-card .day-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px}
+  .day-card .day-meta{font-size:11px;color:var(--dim)}
+  .day-card .day-arrow{padding:0 12px;color:var(--dim)}
+
+  /* ── Level accordion ── */
+  .level-header{border-radius:14px;overflow:hidden;border:1px solid var(--border);margin-bottom:10px;cursor:pointer}
+  .level-inner{display:flex;align-items:center;padding:14px 16px;gap:14px}
+  .level-badge{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+  .level-info{flex:1}
+  .level-num{font-size:11px;color:rgba(255,255,255,.65);font-weight:600;letter-spacing:.5px;margin-bottom:2px}
+  .level-title{font-size:17px;font-weight:800;color:#fff}
+  .level-prog{display:flex;align-items:center;gap:8px;margin-top:5px}
+  .level-mini-bar{flex:1;height:3px;background:rgba(255,255,255,.2);border-radius:2px;overflow:hidden}
+  .level-mini-fill{height:100%;background:rgba(255,255,255,.8);border-radius:2px}
+  .level-days-list{padding:0 0 4px 12px;border-left:2px solid rgba(124,58,237,.3);margin-left:8px;margin-top:4px}
+
+  /* ── Stat cards ── */
+  .stat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+  .stat-card{border-radius:14px;padding:14px 10px;text-align:center}
+  .stat-val{font-size:20px;font-weight:900;color:#fff}
+  .stat-unit{font-size:11px;color:rgba(255,255,255,.7);font-weight:600;margin-top:-2px}
+  .stat-lab{font-size:9px;color:rgba(255,255,255,.65);margin-top:4px}
+
+  /* ── Chart ── */
+  .chart-wrap{position:relative;height:100px;margin:16px 0 8px}
+  .chart-line{position:absolute;background:var(--primaryL);height:2px;transform-origin:left center}
+  .chart-dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--primary);border:2px solid var(--primaryL);transform:translate(-50%,-50%)}
+  .chart-label{position:absolute;font-size:9px;color:var(--dim);transform:translateX(-50%)}
+
+  /* ── Challenge card ── */
+  .challenge{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.2s}
+  .challenge:active{transform:scale(.98)}
+  .challenge.done{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08)}
+  .challenge .ch-icon{font-size:30px;flex-shrink:0}
+  .challenge .ch-info{flex:1}
+  .challenge .ch-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px}
+  .challenge .ch-desc{font-size:12px;color:var(--muted)}
+  .challenge .ch-xp{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .xp-badge{border-radius:10px;padding:4px 10px;font-size:12px;font-weight:800;color:#fff;text-align:center}
+
+  /* ── Achievement card ── */
+  .ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .ach-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+  .ach-card.unlocked{border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.06)}
+  .ach-icon-wrap{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .ach-title{font-size:12px;font-weight:700;color:var(--text)}
+  .ach-desc{font-size:10px;color:var(--muted)}
+  .ach-locked{opacity:.5}
+
+  /* ── Info grid ── */
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .info-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:5px}
+  .info-label{font-size:11px;color:var(--muted)}
+  .info-val{font-size:16px;font-weight:700;color:var(--text)}
+
+  /* ── Settings item ── */
+  .settings-item{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;transition:.2s}
+  .settings-item:active{transform:scale(.98)}
+  .settings-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .settings-label{flex:1;font-size:14px;font-weight:600}
+  .settings-arrow{color:var(--dim);font-size:14px}
+
+  /* ── Toast ── */
+  #toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--success);color:#fff;padding:10px 20px;border-radius:20px;font-weight:700;font-size:14px;transition:transform .3s;z-index:999;white-space:nowrap}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+
+  /* ── Mode switch ── */
+  .mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+  .mode-btn{border:2px solid var(--border);border-radius:12px;padding:12px;background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700;color:var(--muted);transition:.2s}
+  .mode-btn.active-grandir{border-color:var(--primary);background:linear-gradient(135deg,rgba(91,33,182,.15),rgba(124,58,237,.15));color:var(--primaryL)}
+  .mode-btn.active-glowup{border-color:var(--accent);background:linear-gradient(135deg,rgba(190,24,93,.15),rgba(236,72,153,.15));color:#F472B6}
+
+  /* ── Completion animation ── */
+  @keyframes popIn{0%{transform:scale(0) rotate(-10deg);opacity:0}60%{transform:scale(1.1) rotate(3deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+  .pop-in{animation:popIn .6s cubic-bezier(.34,1.56,.64,1) forwards}
+
+  /* ── Mode tag (rest day) ── */
+  .rest-tag{background:rgba(245,158,11,.15);color:var(--gold);padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOAST -->
+  <div id="toast">🎉 +XP gagné !</div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN 0 — LOGIN
+  ══════════════════════════════════════════ -->
+  <div class="screen active" id="screen-login">
+    <div style="flex:1;overflow-y:auto;padding:32px 24px;display:flex;flex-direction:column;justify-content:center;gap:20px">
+      <div style="text-align:center;margin-bottom:8px">
+        <div class="grad-primary" style="width:88px;height:88px;border-radius:44px;display:flex;align-items:center;justify-content:center;font-size:44px;margin:0 auto 14px;box-shadow:0 8px 24px rgba(124,58,237,.5)">🌱</div>
+        <div style="font-size:36px;font-weight:900;letter-spacing:-1px">GrowUp</div>
+        <div style="color:var(--muted);font-size:14px;margin-top:4px">Deviens la meilleure version de toi-même</div>
+      </div>
+
+      <div style="font-size:24px;font-weight:800">Bon retour 👋</div>
+
+      <div class="input-wrap"><span class="ico">✉️</span><input type="email" placeholder="Email" id="inp-email"></div>
+      <div class="input-wrap"><span class="ico">🔒</span><input type="password" placeholder="Mot de passe" id="inp-pass"></div>
+
+      <button class="btn btn-primary" onclick="login()">Se connecter</button>
+
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span style="color:var(--dim);font-size:13px">ou</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+
+      <button class="btn btn-outline" onclick="login()">🔐 &nbsp;Continuer avec Google</button>
+
+      <div style="text-align:center;color:var(--muted);font-size:12px">💡 Appuie sur "Se connecter" pour accéder à la démo</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN 1 — TABS CONTAINER
+  ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-main">
+    <!-- Tab: Programme -->
+    <div id="tab-programme" class="tab-content scroll-content" style="display:block">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div>
+          <div style="font-size:22px;font-weight:800">Bonjour Alex 👋</div>
+          <div style="color:var(--primaryL);font-size:13px;font-weight:700;margin-top:2px">⚡ Apprenti</div>
+        </div>
+        <div class="streak-badge"><div style="font-size:14px">🔥</div><div style="color:#fff;font-weight:800;font-size:13px;line-height:1.1">12</div></div>
+      </div>
+
+      <!-- XP card -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="color:var(--muted);font-size:12px;font-weight:600">Niveau 3</span>
+          <span style="color:var(--primaryL);font-size:12px;font-weight:700">240 / 500 XP</span>
+        </div>
+        <div class="xp-bar-track"><div class="xp-bar-fill" style="width:48%" id="xp-fill"></div></div>
+      </div>
+
+      <!-- Progress card -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <div style="color:var(--muted);font-size:12px;margin-bottom:4px">Progression globale</div>
+            <div style="font-size:20px;font-weight:800" id="prog-label">3 / 14 jours</div>
+          </div>
+          <div class="grad-grandir" style="width:50px;height:50px;border-radius:25px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff">21%</div>
+        </div>
+        <div class="xp-bar-track"><div class="xp-bar-fill" style="width:21%" id="prog-fill"></div></div>
+      </div>
+
+      <!-- Mode switch -->
+      <div class="mode-switch">
+        <button class="mode-btn active-grandir" id="btn-grandir" onclick="setMode('grandir')">💪 Grandir</button>
+        <button class="mode-btn" id="btn-glowup" onclick="setMode('glowup')">✨ Glow Up</button>
+      </div>
+
+      <!-- Levels -->
+      <div id="levels-container"></div>
+    </div>
+
+    <!-- Tab: Progrès -->
+    <div id="tab-progres" class="tab-content scroll-content" style="display:none">
+      <div style="font-size:28px;font-weight:900;margin-bottom:20px">Mes Progrès 📈</div>
+
+      <div class="stat-row">
+        <div class="stat-card grad-grandir">
+          <div class="stat-val">172</div><div class="stat-unit">cm</div><div class="stat-lab">Taille actuelle</div>
+        </div>
+        <div class="stat-card grad-glowup">
+          <div class="stat-val">+2.5</div><div class="stat-unit">cm</div><div class="stat-lab">Progression</div>
+        </div>
+        <div class="stat-card grad-gold">
+          <div class="stat-val">42</div><div class="stat-unit">%</div><div class="stat-lab">Percentile mondial</div>
+        </div>
+      </div>
+
+      <!-- Goal card -->
+      <div class="card" style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <div style="color:var(--muted);font-size:12px;margin-bottom:4px">Objectif de taille</div>
+            <div style="font-size:24px;font-weight:800">177 cm</div>
+          </div>
+          <div style="background:rgba(124,58,237,.2);padding:8px 14px;border-radius:20px;text-align:center">
+            <div style="color:var(--primaryL);font-size:11px">encore</div>
+            <div style="color:var(--primaryL);font-size:16px;font-weight:800">5 cm</div>
+          </div>
+        </div>
+        <div class="xp-bar-track" style="height:8px">
+          <div class="xp-bar-fill" style="width:33%;height:8px"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px">
+          <span style="color:var(--dim);font-size:11px">169.5 cm</span>
+          <span style="color:var(--dim);font-size:11px">177 cm 🎯</span>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="card">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px">📏 Évolution de taille</div>
+        <div class="chart-wrap" id="chart"></div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);margin-top:4px">
+          <div style="font-size:9px;color:var(--dim);text-align:center">Jan</div>
+          <div style="font-size:9px;color:var(--dim);text-align:center">Fév</div>
+          <div style="font-size:9px;color:var(--dim);text-align:center">Mar</div>
+          <div style="font-size:9px;color:var(--dim);text-align:center">Avr</div>
+          <div style="font-size:9px;color:var(--dim);text-align:center">Mai</div>
+          <div style="font-size:9px;color:var(--dim);text-align:center">Jun</div>
+          <div style="font-size:9px;color:var(--dim);text-align:center">Jul</div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div style="font-size:15px;font-weight:700;margin-bottom:10px">📋 Historique</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="height-history"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Défis -->
+    <div id="tab-defis" class="tab-content scroll-content" style="display:none">
+      <div style="font-size:28px;font-weight:900;margin-bottom:20px">Défis & Succès 🏆</div>
+
+      <!-- Daily header -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <div style="font-size:15px;font-weight:700">Défis du jour</div>
+            <div style="color:var(--muted);font-size:12px;margin-top:2px" id="today-date"></div>
+          </div>
+          <div class="grad-gold" style="padding:7px 14px;border-radius:20px">
+            <span style="color:#fff;font-weight:800;font-size:13px" id="xp-earned-label">0 / 135 XP</span>
+          </div>
+        </div>
+        <div class="xp-bar-track">
+          <div id="daily-xp-fill" class="xp-bar-fill" style="width:0%;background:linear-gradient(90deg,#D97706,#F59E0B)"></div>
+        </div>
+        <div style="color:var(--dim);font-size:11px;margin-top:6px" id="challenges-done-label">0/5 défis complétés</div>
+      </div>
+
+      <div id="challenges-list"></div>
+
+      <!-- Achievements -->
+      <div style="font-size:18px;font-weight:800;margin:20px 0 12px">Succès 🏅</div>
+      <div style="font-size:13px;font-weight:700;color:var(--primaryL);margin-bottom:10px">✅ Obtenus (3)</div>
+      <div class="ach-grid" style="margin-bottom:18px" id="ach-unlocked"></div>
+      <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:10px">🔒 À débloquer (5)</div>
+      <div class="ach-grid" id="ach-locked"></div>
+    </div>
+
+    <!-- Tab: Profil -->
+    <div id="tab-profil" class="tab-content scroll-content" style="display:none">
+      <!-- Hero -->
+      <div style="background:linear-gradient(180deg,rgba(124,58,237,.25),transparent);padding-top:60px;padding-bottom:24px;display:flex;flex-direction:column;align-items:center;gap:8px;margin:-20px -20px 0;padding-left:20px;padding-right:20px">
+        <div class="grad-primary" style="width:88px;height:88px;border-radius:44px;display:flex;align-items:center;justify-content:center;font-size:42px;position:relative">
+          💪
+          <div style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:13px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid var(--bg)">📷</div>
+        </div>
+        <div style="font-size:22px;font-weight:800">Alex Martin</div>
+        <div style="color:var(--muted);font-size:14px">alex@growup.app</div>
+        <div style="background:rgba(124,58,237,.2);padding:7px 16px;border-radius:20px;display:flex;align-items:center;gap:6px">
+          <span>⚡</span><span style="color:var(--primaryL);font-size:14px;font-weight:700">Apprenti</span>
+        </div>
+      </div>
+
+      <div style="padding-top:20px">
+        <!-- XP card -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="color:var(--muted);font-size:12px;font-weight:600">Niveau 3</span>
+            <span style="color:var(--primaryL);font-size:12px;font-weight:700">240 / 500 XP</span>
+          </div>
+          <div class="xp-bar-track" style="margin-bottom:14px"><div class="xp-bar-fill" style="width:48%"></div></div>
+          <div style="display:flex;align-items:center">
+            <div style="flex:1;text-align:center"><div style="font-size:16px;font-weight:800">1240</div><div style="color:var(--dim);font-size:10px">XP total</div></div>
+            <div style="width:1px;height:30px;background:var(--border)"></div>
+            <div style="flex:1;text-align:center"><div style="font-size:16px;font-weight:800">Niv. 3</div><div style="color:var(--dim);font-size:10px">Niveau actuel</div></div>
+            <div style="width:1px;height:30px;background:var(--border)"></div>
+            <div style="flex:1;text-align:center"><div style="font-size:16px;font-weight:800">260</div><div style="color:var(--dim);font-size:10px">XP → Niv. 4</div></div>
+          </div>
+          <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:12px">
+            Rang suivant : <span style="color:#F59E0B">💎 Avancé</span> (Niv. 10)
+          </div>
+        </div>
+
+        <!-- Streak -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="color:var(--muted);font-size:13px;margin-bottom:4px">Streak actuel 🔥</div>
+              <div style="font-size:20px;font-weight:800">12 jours consécutifs</div>
+              <div style="color:var(--dim);font-size:12px;margin-top:4px">Continue comme ça !</div>
+            </div>
+            <div class="streak-badge"><div style="font-size:16px">🔥</div><div style="color:#fff;font-weight:800;font-size:14px">12</div></div>
+          </div>
+        </div>
+
+        <!-- Info grid -->
+        <div style="font-size:15px;font-weight:700;margin-bottom:10px">Mes informations</div>
+        <div class="info-grid" style="margin-bottom:18px">
+          <div class="info-card"><div style="font-size:18px">📏</div><div class="info-label">Taille</div><div class="info-val">172 cm</div></div>
+          <div class="info-card"><div style="font-size:18px">⚖️</div><div class="info-label">Poids</div><div class="info-val">68 kg</div></div>
+          <div class="info-card"><div style="font-size:18px">🎯</div><div class="info-label">Objectif</div><div class="info-val">177 cm</div></div>
+          <div class="info-card"><div style="font-size:18px">💪</div><div class="info-label">Programme</div><div class="info-val" style="font-size:13px">Grandir</div></div>
+        </div>
+
+        <!-- Settings -->
+        <div style="font-size:15px;font-weight:700;margin-bottom:10px">Paramètres</div>
+        <div class="settings-item"><div class="settings-icon grad-gold" style="font-size:16px">🏆</div><span class="settings-label">Mes succès</span><span class="settings-arrow">›</span></div>
+        <div class="settings-item"><div class="settings-icon grad-primary" style="font-size:16px">🔔</div><span class="settings-label">Notifications</span><span class="settings-arrow">›</span></div>
+        <div class="settings-item"><div class="settings-icon grad-glowup" style="font-size:16px">📤</div><span class="settings-label">Partager l'app</span><span class="settings-arrow">›</span></div>
+
+        <button class="btn" onclick="logout()" style="background:linear-gradient(90deg,#7f1d1d,#EF4444);color:#fff;margin-top:10px;margin-bottom:10px">
+          🚪 Se déconnecter
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Tab Bar -->
+    <div id="tabs">
+      <button class="tab-btn active" id="tab-btn-programme" onclick="switchTab('programme')">
+        <span class="tab-icon">🏋️</span><span class="tab-label">Programme</span>
+      </button>
+      <button class="tab-btn" id="tab-btn-progres" onclick="switchTab('progres')">
+        <span class="tab-icon">📈</span><span class="tab-label">Progrès</span>
+      </button>
+      <button class="tab-btn" id="tab-btn-defis" onclick="switchTab('defis')">
+        <span class="tab-icon">🏆</span><span class="tab-label">Défis</span>
+      </button>
+      <button class="tab-btn" id="tab-btn-profil" onclick="switchTab('profil')">
+        <span class="tab-icon">👤</span><span class="tab-label">Profil</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN 2 — WORKOUT PREVIEW
+  ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-preview">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:52px 20px 12px">
+      <button onclick="goBack()" style="width:38px;height:38px;border-radius:19px;border:1px solid var(--border);background:var(--surface);font-size:18px;cursor:pointer">✕</button>
+      <div style="background:rgba(124,58,237,.25);padding:6px 16px;border-radius:20px;color:var(--primaryL);font-size:13px;font-weight:700" id="preview-day-label">Jour 1</div>
+    </div>
+    <div class="scroll-content" style="padding-top:8px" id="preview-content"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN 3 — WORKOUT ACTIVE
+  ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-workout">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:52px 20px 12px">
+      <button onclick="goBack()" style="width:38px;height:38px;border-radius:19px;border:1px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;color:var(--muted)">✕</button>
+      <div id="workout-chips" class="ex-chips" style="flex:1;margin:0 12px"></div>
+      <div style="background:rgba(245,158,11,.15);padding:5px 12px;border-radius:10px;color:var(--gold);font-size:12px;font-weight:800" id="workout-xp-label">+60 XP</div>
+    </div>
+    <div class="scroll-content" style="padding-top:8px" id="workout-content"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN 4 — COMPLETION
+  ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-done">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:18px">
+      <div class="grad-success pop-in" style="width:110px;height:110px;border-radius:55px;display:flex;align-items:center;justify-content:center;font-size:54px;box-shadow:0 8px 32px rgba(34,197,94,.4)">🏆</div>
+      <div style="font-size:32px;font-weight:900;text-align:center" class="pop-in">Séance terminée !</div>
+      <div style="color:var(--muted);font-size:16px;text-align:center" id="done-day-title">Activation corporelle</div>
+      <div class="card" style="display:flex;gap:24px;width:100%;justify-content:center;margin-bottom:4px">
+        <div style="text-align:center"><div style="font-size:26px;font-weight:900" id="done-xp">+60</div><div style="color:var(--muted);font-size:12px">XP gagnés</div></div>
+        <div style="text-align:center"><div style="font-size:26px;font-weight:900" id="done-ex">4</div><div style="color:var(--muted);font-size:12px">Exercices</div></div>
+        <div style="text-align:center"><div style="font-size:26px;font-weight:900" id="done-min">25</div><div style="color:var(--muted);font-size:12px">Minutes</div></div>
+      </div>
+      <button class="btn btn-primary" onclick="goToMain()">Retour au programme</button>
+      <button class="btn btn-outline" onclick="switchTab('progres');goToMain()">Voir mes progrès</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ──────────────────────────────
+let state = {
+  screen: 'login',
+  tab: 'programme',
+  mode: 'grandir',
+  expandedLevel: 'g1',
+  currentDay: null,
+  currentExIdx: 0,
+  timerInterval: null,
+  timerSecs: 0,
+  timerRunning: false,
+  completedDays: new Set(['d1','d2','d3','gu-d1','gu-d2']),
+  completedChallenges: new Set(),
+  totalXP: 1240,
+};
+
+const DATA = {
+  grandir: [
+    { id:'g1', level:1, title:'Fondations', icon:'🌱', unlocked:true,
+      days:[
+        {id:'d1',day:1,title:'Activation corporelle',xp:60,min:25,
+         exercises:[
+           {name:'Étirements colonne',dur:60,sets:3,xp:10,diff:'easy',groups:['Dos']},
+           {name:'Suspension barre',dur:30,sets:4,xp:15,diff:'medium',groups:['Épaules']},
+           {name:'Cobra Yoga',dur:45,sets:3,xp:10,diff:'easy',groups:['Colonne']},
+           {name:'Sauts en étoile',dur:30,sets:3,xp:12,diff:'easy',groups:['Cardio']},
+         ]},
+        {id:'d2',day:2,title:'Colonne vertébrale forte',xp:65,min:30,
+         exercises:[
+           {name:'Chat-Vache',dur:60,sets:4,xp:12,diff:'easy',groups:['Colonne']},
+           {name:'Planche',dur:30,sets:4,xp:15,diff:'medium',groups:['Abdos']},
+           {name:'Superman',dur:45,sets:3,xp:12,diff:'easy',groups:['Dos']},
+           {name:'Rotation bassin',dur:45,sets:2,xp:10,diff:'easy',groups:['Hanches']},
+         ]},
+        {id:'d3',day:3,title:'Repos actif 😴',xp:30,min:15,rest:true,
+         exercises:[{name:'Marche consciente',dur:900,sets:1,xp:15,diff:'easy',groups:['Corps entier']}]},
+        {id:'d4',day:4,title:'Force & Longueur',xp:70,min:35,
+         exercises:[
+           {name:'Fentes avant',reps:12,sets:3,xp:15,diff:'medium',groups:['Jambes']},
+           {name:'Squats profonds',reps:15,sets:3,xp:15,diff:'medium',groups:['Quadriceps']},
+           {name:'Pont fessier',reps:15,sets:3,xp:12,diff:'easy',groups:['Fessiers']},
+           {name:'Étirement psoas',dur:45,sets:3,xp:10,diff:'easy',groups:['Psoas']},
+         ]},
+        {id:'d5',day:5,title:'Mobilité des épaules',xp:60,min:25,
+         exercises:[
+           {name:'Rotation des bras',dur:30,sets:3,xp:10,diff:'easy',groups:['Épaules']},
+           {name:'Ouverture thoracique',dur:45,sets:4,xp:12,diff:'easy',groups:['Poitrine']},
+           {name:'Traction australienne',reps:10,sets:3,xp:15,diff:'medium',groups:['Dos']},
+           {name:'Chien tête en bas',dur:60,sets:3,xp:12,diff:'easy',groups:['Dos']},
+         ]},
+        {id:'d6',day:6,title:'Sprint & Sauts',xp:75,min:30,
+         exercises:[
+           {name:'Sprint 20m',reps:8,sets:1,xp:20,diff:'hard',groups:['Jambes']},
+           {name:'Sauts verticaux',reps:10,sets:4,xp:15,diff:'medium',groups:['Jambes']},
+           {name:'Corde à sauter',dur:120,sets:3,xp:15,diff:'medium',groups:['Cardio']},
+         ]},
+        {id:'d7',day:7,title:'Repos complet 🛌',xp:20,min:5,rest:true,
+         exercises:[{name:'Méditation du soir',dur:300,sets:1,xp:20,diff:'easy',groups:['Mental']}]},
+      ]},
+    { id:'g2', level:2, title:'Élan', icon:'⚡', unlocked:true,
+      days:[
+        {id:'d8',day:1,title:'Force explosive',xp:90,min:40,
+         exercises:[
+           {name:'Burpees',reps:10,sets:4,xp:20,diff:'hard',groups:['Corps entier']},
+           {name:'Pompes diamant',reps:12,sets:4,xp:18,diff:'hard',groups:['Triceps']},
+           {name:'Suspension longue',dur:60,sets:4,xp:20,diff:'hard',groups:['Colonne']},
+           {name:'Fentes sautées',reps:12,sets:3,xp:18,diff:'hard',groups:['Jambes']},
+         ]},
+        {id:'d9',day:2,title:'Yoga croissance',xp:80,min:35,
+         exercises:[
+           {name:'Salutation au soleil',dur:300,sets:3,xp:25,diff:'medium',groups:['Corps entier']},
+           {name:'Guerrier I',dur:45,sets:3,xp:15,diff:'medium',groups:['Jambes']},
+           {name:'Posture de la roue',dur:30,sets:4,xp:20,diff:'hard',groups:['Colonne']},
+         ]},
+        ...Array.from({length:5},(_,i)=>({id:`d${10+i}`,day:i+3,title:`Jour ${i+3}`,xp:70,min:30,
+         exercises:[{name:'Exercice du jour',reps:10,sets:3,xp:15,diff:'medium',groups:['Corps entier']}]}))
+      ]},
+    { id:'g3', level:3, title:'Ascension', icon:'🚀', unlocked:false, days:[] },
+  ],
+  glowup: [
+    { id:'gu1', level:1, title:'Éveil', icon:'✨', unlocked:true,
+      days:[
+        {id:'gu-d1',day:1,title:'Routine du matin',xp:55,min:20,
+         exercises:[
+           {name:'Hydratation consciente',dur:120,sets:1,xp:10,diff:'easy',groups:['Bien-être']},
+           {name:'Stretching matinal',dur:600,sets:1,xp:15,diff:'easy',groups:['Corps entier']},
+           {name:'Journaling ✍️',dur:300,sets:1,xp:15,diff:'easy',groups:['Mental']},
+           {name:'Skin care matinal',dur:300,sets:1,xp:15,diff:'easy',groups:['Peau']},
+         ]},
+        {id:'gu-d2',day:2,title:'Corps & Posture',xp:60,min:25,
+         exercises:[
+           {name:'Correction posturale',dur:120,sets:5,xp:15,diff:'easy',groups:['Dos']},
+           {name:'Pilates débutant',dur:1200,sets:1,xp:25,diff:'medium',groups:['Abdos']},
+           {name:'Massage facial Gua Sha',dur:300,sets:1,xp:15,diff:'easy',groups:['Visage']},
+         ]},
+        {id:'gu-d3',day:3,title:'Détox & Nutrition',xp:50,min:15,
+         exercises:[
+           {name:'Jus vert du matin 🥤',dur:600,sets:1,xp:20,diff:'easy',groups:['Nutrition']},
+           {name:'Repas anti-inflammatoire',dur:1800,sets:1,xp:20,diff:'easy',groups:['Nutrition']},
+           {name:"Objectif 2,5L d'eau 💧",dur:60,sets:1,xp:15,diff:'easy',groups:['Hydratation']},
+         ]},
+        ...Array.from({length:4},(_,i)=>({id:`gu-d${4+i}`,day:i+4,title:`Jour ${i+4}`,xp:55,min:25,
+         exercises:[{name:'Activité bien-être',dur:600,sets:1,xp:20,diff:'easy',groups:['Bien-être']}]}))
+      ]},
+    { id:'gu2', level:2, title:'Rayonnement', icon:'🌟', unlocked:false, days:[] },
+  ]
+};
+
+const CHALLENGES_DATA = [
+  {id:'c1',icon:'💧',title:'Hydratation',desc:"Boire 2,5L d'eau aujourd'hui",xp:25},
+  {id:'c2',icon:'😴',title:'Sommeil réparateur',desc:'Dormir 8h cette nuit',xp:30},
+  {id:'c3',icon:'🧘',title:'Étirement du matin',desc:'10 min de stretching au réveil',xp:20},
+  {id:'c4',icon:'🥗',title:'Repas équilibré',desc:'Manger 5 fruits & légumes',xp:25},
+  {id:'c5',icon:'🚶',title:'10 000 pas',desc:"Atteindre 10 000 pas aujourd'hui",xp:35},
+];
+
+const ACHS = [
+  {icon:'👟',title:'Premier pas',desc:'1er entraînement',xp:50,done:true},
+  {icon:'🔥',title:'Semaine parfaite',desc:'Streak 7 jours',xp:200,done:true},
+  {icon:'💪',title:'Assidu',desc:'10 entraînements',xp:100,done:true},
+  {icon:'⚡',title:'Montée en puissance',desc:'Niveau 5',xp:150,done:false},
+  {icon:'🏆',title:'Vétéran',desc:'Niveau 10',xp:300,done:false},
+  {icon:'💎',title:'Infatigable',desc:'50 séances',xp:400,done:false},
+  {icon:'📏',title:'Premier centimètre',desc:'+1 cm de taille',xp:300,done:false},
+  {icon:'🚀',title:'Transformation',desc:'+5 cm de taille',xp:1000,done:false},
+];
+
+// ─── Navigation ──────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active','behind'));
+  document.getElementById('screen-'+id).classList.add('active');
+}
+function goBack() {
+  stopTimer();
+  if(state.screen==='workout') { showScreen('preview'); state.screen='preview'; }
+  else { showScreen('main'); state.screen='main'; }
+}
+function goToMain() { showScreen('main'); state.screen='main'; }
+
+// ─── Auth ────────────────────────────────
+function login() {
+  showScreen('main');
+  state.screen='main';
+  renderLevels();
+  renderChart();
+  renderChallenges();
+  renderAchievements();
+  renderHeightHistory();
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+}
+function logout() { showScreen('login'); state.screen='login'; }
+
+// ─── Tabs ────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(c=>c.style.display='none');
+  document.getElementById('tab-'+tab).style.display='block';
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-btn-'+tab).classList.add('active');
+  state.tab=tab;
+}
+
+// ─── Mode ────────────────────────────────
+function setMode(mode) {
+  state.mode=mode; state.expandedLevel=null;
+  document.getElementById('btn-grandir').className='mode-btn'+(mode==='grandir'?' active-grandir':'');
+  document.getElementById('btn-glowup').className='mode-btn'+(mode==='glowup'?' active-glowup':'');
+  renderLevels();
+}
+
+// ─── Render levels ───────────────────────
+function renderLevels() {
+  const c=document.getElementById('levels-container'); c.innerHTML='';
+  const levels=DATA[state.mode];
+  const accentG=state.mode==='grandir'?'linear-gradient(90deg,#5B21B6,#7C3AED)':'linear-gradient(90deg,#BE185D,#EC4899)';
+  const accentC=state.mode==='grandir'?'#7C3AED':'#EC4899';
+
+  levels.forEach(lv=>{
+    const isOpen=state.expandedLevel===lv.id;
+    const doneN=lv.days.filter(d=>state.completedDays.has(d.id)).length;
+    const pct=lv.days.length?doneN/lv.days.length:0;
+
+    const wrap=document.createElement('div');
+    wrap.style.marginBottom='10px';
+
+    const header=document.createElement('div');
+    header.className='level-header';
+    header.style.opacity=lv.unlocked?1:0.6;
+    header.innerHTML=`
+      <div class="level-inner" style="background:${lv.unlocked?accentG:'linear-gradient(135deg,#1E1E40,#12122A)'}">
+        <div class="level-badge">${lv.unlocked?lv.icon:'🔒'}</div>
+        <div class="level-info">
+          <div class="level-num">Niveau ${lv.level}</div>
+          <div class="level-title">${lv.title}</div>
+          ${lv.unlocked&&lv.days.length?`<div class="level-prog">
+            <span style="color:rgba(255,255,255,.7);font-size:11px">${doneN}/${lv.days.length} jours</span>
+            <div class="level-mini-bar"><div class="level-mini-fill" style="width:${pct*100}%"></div></div>
+          </div>`:''}
+        </div>
+        ${lv.unlocked?`<span style="color:rgba(255,255,255,.7);font-size:18px">${isOpen?'▲':'▼'}</span>`:''}
+      </div>`;
+    if(lv.unlocked) header.onclick=()=>{ state.expandedLevel=isOpen?null:lv.id; renderLevels(); };
+
+    wrap.appendChild(header);
+
+    if(isOpen&&lv.unlocked){
+      const list=document.createElement('div');
+      list.className='level-days-list';
+      lv.days.forEach(day=>{
+        const done=state.completedDays.has(day.id);
+        const dc=document.createElement('div');
+        dc.className='day-card'+(done?' done':'');
+        dc.onclick=()=>startDayPreview(day);
+        dc.innerHTML=`
+          <div class="accent" style="background:${done?'#22C55E':accentC}"></div>
+          <div class="day-num" style="background:${done?'rgba(34,197,94,.2)':'rgba(124,58,237,.2)'};color:${done?'#22C55E':accentC}">${day.day}</div>
+          <div class="day-info">
+            <div class="day-title">${day.title}${day.rest?'&nbsp;<span class="rest-tag">Repos</span>':''}</div>
+            <div class="day-meta">⏱ ${day.min}min &nbsp;⚡ +${day.xp}XP${!day.rest?` &nbsp;🏋️ ${day.exercises.length} exos`:''}</div>
+          </div>
+          <div class="day-arrow">${done?'<span style="color:#22C55E;font-size:20px">✓</span>':'›'}</div>`;
+        list.appendChild(dc);
+      });
+      wrap.appendChild(list);
+    }
+    c.appendChild(wrap);
+  });
+}
+
+// ─── Day preview ─────────────────────────
+function startDayPreview(day) {
+  state.currentDay=day; state.currentExIdx=0;
+  const accentG=state.mode==='grandir'?'linear-gradient(135deg,#5B21B6,#7C3AED)':'linear-gradient(135deg,#BE185D,#EC4899)';
+  document.getElementById('preview-day-label').textContent=`Jour ${day.day}`;
+  const c=document.getElementById('preview-content');
+  c.innerHTML=`
+    <div style="background:${accentG};border-radius:20px;padding:24px;text-align:center;margin-bottom:18px">
+      <div style="font-size:26px;font-weight:900;margin-bottom:8px">${day.title}</div>
+      <div style="display:flex;justify-content:center;gap:24px;margin-top:10px">
+        <div style="text-align:center"><div style="font-size:22px">⏱</div><div style="color:rgba(255,255,255,.9);font-weight:700;font-size:13px">${day.min}min</div></div>
+        <div style="text-align:center"><div style="font-size:22px">⚡</div><div style="color:rgba(255,255,255,.9);font-weight:700;font-size:13px">+${day.xp}XP</div></div>
+        <div style="text-align:center"><div style="font-size:22px">🏋️</div><div style="color:rgba(255,255,255,.9);font-weight:700;font-size:13px">${day.exercises.length} exos</div></div>
+      </div>
+    </div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:12px">Programme de la séance</div>
+    ${day.exercises.map((e,i)=>`
+      <div style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px">
+        <div style="width:30px;height:30px;border-radius:15px;background:rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;color:var(--primaryL);font-weight:800;font-size:13px;flex-shrink:0">${i+1}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;margin-bottom:2px">${e.name}</div>
+          <div style="font-size:11px;color:var(--muted)">${e.dur?e.dur+'s':e.reps+' reps'}${e.sets>1?' × '+e.sets+' séries':''} · <span class="tag tag-${e.diff}">${e.diff==='easy'?'Facile':e.diff==='medium'?'Moyen':'Difficile'}</span></div>
+        </div>
+        <div style="color:var(--gold);font-size:12px;font-weight:700">+${e.xp}XP</div>
+      </div>`).join('')}
+    <button class="btn ${state.mode==='grandir'?'btn-grandir':'btn-glowup'}" style="margin-top:16px;margin-bottom:8px" onclick="startWorkout()">
+      ${day.rest?'✅ Marquer comme fait':'🚀 Démarrer la séance'}
+    </button>`;
+  showScreen('preview'); state.screen='preview';
+}
+
+// ─── Workout ─────────────────────────────
+function startWorkout() {
+  if(state.currentDay.rest){completeWorkout();return;}
+  state.currentExIdx=0; renderWorkoutExercise();
+  showScreen('workout'); state.screen='workout';
+}
+
+function renderWorkoutExercise() {
+  const day=state.currentDay, exs=day.exercises, i=state.currentExIdx, ex=exs[i];
+  const isLast=i===exs.length-1;
+  stopTimer();
+  state.timerSecs=ex.dur||0; state.timerRunning=false;
+
+  // chips
+  const chips=document.getElementById('workout-chips');
+  chips.innerHTML=exs.map((_,j)=>`<div class="ex-chip ${j<i?'done':j===i?'active':''}"></div>`).join('');
+  document.getElementById('workout-xp-label').textContent=`+${day.xp} XP`;
+
+  const diffColor={easy:'#22C55E',medium:'#F59E0B',hard:'#EF4444'}[ex.diff];
+  const accentG=state.mode==='grandir'?'linear-gradient(135deg,#5B21B6,#7C3AED)':'linear-gradient(135deg,#BE185D,#EC4899)';
+
+  document.getElementById('workout-content').innerHTML=`
+    <div style="text-align:center;margin-bottom:12px">
+      <div style="font-size:22px;font-weight:800;margin-bottom:8px">${ex.name}</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <span class="tag tag-${ex.diff}">${ex.diff==='easy'?'Facile':ex.diff==='medium'?'Moyen':'Difficile'}</span>
+        ${ex.groups.map(g=>`<span style="background:var(--surfaceL);padding:3px 8px;border-radius:6px;font-size:11px;color:var(--muted)">${g}</span>`).join('')}
+      </div>
+    </div>
+
+    ${ex.dur?`
+      <div class="timer-circle" id="timer-circle">
+        <div id="timer-phase" style="font-size:12px;color:rgba(255,255,255,.7);font-weight:600">💪 Effort</div>
+        <div class="timer-num" id="timer-num">${fmt(ex.dur)}</div>
+        <div class="timer-label">${ex.sets>1?ex.sets+' séries':'1 série'}</div>
+      </div>
+      <button onclick="toggleTimer()" id="timer-btn" style="width:68px;height:68px;border-radius:34px;border:none;cursor:pointer;background:${accentG};font-size:26px;display:block;margin:0 auto 20px;box-shadow:0 4px 16px rgba(124,58,237,.4)">▶</button>
+    `:`
+      <div style="text-align:center;margin:24px 0">
+        <div style="width:160px;height:160px;border-radius:80px;background:${accentG};display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 8px 24px rgba(124,58,237,.4)">
+          <div style="font-size:58px;font-weight:900;color:#fff;line-height:1">${ex.reps}</div>
+          <div style="color:rgba(255,255,255,.8);font-size:15px;font-weight:600">répétitions</div>
+        </div>
+        ${ex.sets>1?`<div style="color:var(--muted);font-size:13px">× ${ex.sets} séries · Repos ${ex.rest||30}s</div>`:''}
+      </div>
+    `}
+
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="display:inline-block;background:rgba(245,158,11,.2);padding:5px 14px;border-radius:16px;color:var(--gold);font-weight:800;font-size:14px">+${ex.xp} XP</div>
+    </div>
+
+    <button class="btn ${isLast?'btn-success':state.mode==='grandir'?'btn-grandir':'btn-glowup'}" onclick="${isLast?'completeWorkout()':'nextExercise()'}">
+      ${isLast?'🏆 Terminer la séance':'Exercice suivant →'}
+    </button>
+    <div style="height:20px"></div>`;
+}
+
+function toggleTimer() {
+  const ex=state.currentDay.exercises[state.currentExIdx];
+  if(state.timerRunning){stopTimer();}
+  else{
+    state.timerRunning=true;
+    document.getElementById('timer-btn').textContent='⏸';
+    state.timerInterval=setInterval(()=>{
+      state.timerSecs--;
+      if(state.timerSecs<=0){stopTimer();state.timerSecs=0;}
+      document.getElementById('timer-num').textContent=fmt(state.timerSecs);
+    },1000);
+  }
+}
+function stopTimer(){
+  clearInterval(state.timerInterval); state.timerRunning=false;
+  const btn=document.getElementById('timer-btn');
+  if(btn) btn.textContent='▶';
+}
+function nextExercise(){state.currentExIdx++;renderWorkoutExercise();}
+function fmt(s){return`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;}
+
+function completeWorkout() {
+  stopTimer();
+  const day=state.currentDay;
+  state.completedDays.add(day.id);
+  state.totalXP+=day.xp;
+
+  document.getElementById('done-day-title').textContent=day.title;
+  document.getElementById('done-xp').textContent='+'+day.xp;
+  document.getElementById('done-ex').textContent=day.exercises.length;
+  document.getElementById('done-min').textContent=day.min;
+
+  showScreen('done'); state.screen='done';
+  showToast('🏆 +'+day.xp+' XP gagnés !');
+  renderLevels();
+  // Update XP bar
+  const pct=Math.min(100,(state.totalXP%500)/5);
+  document.getElementById('xp-fill').style.width=pct+'%';
+}
+
+// ─── Chart ───────────────────────────────
+function renderChart() {
+  const heights=[169.5,170.0,170.2,171.0,171.8,172.0,172.0];
+  const c=document.getElementById('chart');
+  const W2=c.offsetWidth||300, H2=100;
+  const minH=Math.min(...heights)-0.5, maxH=Math.max(...heights)+0.5;
+  const pts=heights.map((h,i)=>({x:(i/(heights.length-1))*(W2-20)+10,y:H2-((h-minH)/(maxH-minH))*H2}));
+
+  pts.slice(1).forEach((pt,i)=>{
+    const prev=pts[i], dx=pt.x-prev.x, dy=pt.y-prev.y, len=Math.sqrt(dx*dx+dy*dy), angle=Math.atan2(dy,dx)*180/Math.PI;
+    const line=document.createElement('div');
+    line.className='chart-line';
+    line.style.cssText=`left:${prev.x}px;top:${prev.y}px;width:${len}px;transform:rotate(${angle}deg)`;
+    c.appendChild(line);
+  });
+  pts.forEach((pt,i)=>{
+    const dot=document.createElement('div');
+    dot.className='chart-dot';
+    dot.style.cssText=`left:${pt.x}px;top:${pt.y}px`;
+    c.appendChild(dot);
+  });
+}
+
+// ─── Height history ───────────────────────
+function renderHeightHistory() {
+  const entries=[
+    {h:169.5,date:'Jan 2025'},{h:170.0,date:'Fév 2025'},{h:170.2,date:'Mar 2025'},
+    {h:171.0,date:'Avr 2025'},{h:171.8,date:'Mai 2025'},{h:172.0,date:'Jun 2025',latest:true},
+  ];
+  const c=document.getElementById('height-history');
+  c.innerHTML=[...entries].reverse().map((e,i,arr)=>`
+    <div style="display:flex;align-items:center;padding:13px 16px;${i<arr.length-1?'border-bottom:1px solid rgba(42,42,90,.5)':''};gap:12px">
+      <div style="width:10px;height:10px;border-radius:5px;background:#7C3AED;flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:700">${e.h} cm</div>
+        ${e.latest?'<div style="color:#22C55E;font-size:11px;margin-top:1px">Dernière mesure</div>':''}
+      </div>
+      <div style="color:var(--dim);font-size:12px">${e.date}</div>
+    </div>`).join('');
+}
+
+// ─── Challenges ───────────────────────────
+function renderChallenges() {
+  const xpTotal=CHALLENGES_DATA.reduce((s,c)=>s+c.xp,0);
+  const xpEarned=[...state.completedChallenges].reduce((s,id)=>{const c=CHALLENGES_DATA.find(c=>c.id===id);return s+(c?c.xp:0);},0);
+  const pct=xpTotal?xpEarned/xpTotal*100:0;
+  document.getElementById('daily-xp-fill').style.width=pct+'%';
+  document.getElementById('xp-earned-label').textContent=xpEarned+' / '+xpTotal+' XP';
+  document.getElementById('challenges-done-label').textContent=state.completedChallenges.size+'/'+CHALLENGES_DATA.length+' défis complétés';
+
+  const c=document.getElementById('challenges-list');
+  c.innerHTML=CHALLENGES_DATA.map(ch=>`
+    <div class="challenge ${state.completedChallenges.has(ch.id)?'done':''}" onclick="toggleChallenge('${ch.id}',${ch.xp})">
+      <div class="ch-icon">${ch.icon}</div>
+      <div class="ch-info">
+        <div class="ch-title">${ch.title}</div>
+        <div class="ch-desc">${ch.desc}</div>
+      </div>
+      <div class="ch-xp">
+        <div class="xp-badge ${state.completedChallenges.has(ch.id)?'grad-success':'grad-gold'}">+${ch.xp}</div>
+        ${state.completedChallenges.has(ch.id)?'<span style="color:#22C55E;font-size:20px">✓</span>':''}
+      </div>
+    </div>`).join('');
+}
+function toggleChallenge(id,xp){
+  if(!state.completedChallenges.has(id)){
+    state.completedChallenges.add(id);
+    state.totalXP+=xp;
+    showToast('⚡ +'+xp+' XP !');
+  } else { state.completedChallenges.delete(id); }
+  renderChallenges();
+}
+
+// ─── Achievements ─────────────────────────
+function renderAchievements(){
+  const unlocked=ACHS.filter(a=>a.done), locked=ACHS.filter(a=>!a.done);
+  document.getElementById('ach-unlocked').innerHTML=unlocked.map(a=>`
+    <div class="ach-card unlocked">
+      <div class="ach-icon-wrap grad-gold"><span style="font-size:24px">${a.icon}</span></div>
+      <div class="ach-title">${a.title}</div>
+      <div class="ach-desc">${a.desc}</div>
+      <div style="background:rgba(245,158,11,.2);padding:3px 10px;border-radius:8px;color:var(--gold);font-size:11px;font-weight:700">+${a.xp} XP</div>
+    </div>`).join('');
+  document.getElementById('ach-locked').innerHTML=locked.map(a=>`
+    <div class="ach-card ach-locked">
+      <div class="ach-icon-wrap" style="background:var(--surfaceL)"><span style="font-size:24px;opacity:.3">${a.icon}</span></div>
+      <div class="ach-title" style="color:var(--dim)">${a.title}</div>
+      <div class="ach-desc">${a.desc}</div>
+    </div>`).join('');
+}
+
+// ─── Toast ────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ─── Init ─────────────────────────────────
+window.onload=()=>{
+  setTimeout(()=>document.getElementById('xp-fill').style.width='48%',300);
+};
+</script>
+</body>
+</html>
