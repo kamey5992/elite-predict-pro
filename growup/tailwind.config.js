@@ -1,0 +1,57 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ['./app/**/*.{js,jsx,ts,tsx}', './components/**/*.{js,jsx,ts,tsx}'],
+  presets: [require('nativewind/preset')],
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          50:  '#f5f0ff',
+          100: '#ede0ff',
+          200: '#d9c0ff',
+          300: '#be90ff',
+          400: '#a060ff',
+          500: '#7C3AED',
+          600: '#6B21D6',
+          700: '#5B18B8',
+          800: '#4a1299',
+          900: '#3a0e7a',
+        },
+        accent: {
+          50:  '#fff0f9',
+          100: '#ffe0f3',
+          200: '#ffc0e7',
+          300: '#ff90d4',
+          400: '#ff60c0',
+          500: '#EC4899',
+          600: '#d4327f',
+          700: '#b82268',
+          800: '#9a1554',
+          900: '#7c0d42',
+        },
+        dark: {
+          50:  '#f0f0ff',
+          100: '#d8d8f0',
+          200: '#b0b0d8',
+          300: '#8888b8',
+          400: '#606098',
+          500: '#404070',
+          600: '#2a2a58',
+          700: '#1a1a40',
+          800: '#0f0f28',
+          900: '#0A0A1A',
+        },
+        success: '#22C55E',
+        warning: '#F59E0B',
+        error:   '#EF4444',
+        gold:    '#F59E0B',
+        silver:  '#94A3B8',
+        bronze:  '#B45309',
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+    },
+  },
+  plugins: [],
+};
